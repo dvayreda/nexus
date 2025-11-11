@@ -1,0 +1,48 @@
+# Nexus Content Automation - Python Dependencies
+# Install: pip install -r requirements.txt
+
+# Image processing and rendering
+Pillow>=10.0.0                # Image manipulation for carousel creation
+Pillow-HEIF>=0.13.0          # HEIF/HEIC format support
+
+# Video processing (optional, for future shorts/video content)
+# moviepy>=1.0.3              # Uncomment when ready for video rendering
+# ffmpeg-python>=0.2.0        # FFmpeg wrapper
+
+# API clients
+requests>=2.31.0             # HTTP requests for APIs
+httpx>=0.24.0               # Modern async HTTP client
+
+# AI/LLM clients
+anthropic>=0.7.0            # Claude API client
+groq>=0.4.0                 # Groq API client (fast, free inference)
+
+# Data validation and schemas
+jsonschema>=4.19.0          # JSON schema validation
+pydantic>=2.5.0             # Data validation using Python type hints
+
+# Database
+psycopg2-binary>=2.9.9      # PostgreSQL adapter
+sqlalchemy>=2.0.0           # SQL toolkit and ORM
+
+# Utilities
+python-dotenv>=1.0.0        # Load environment variables from .env
+python-dateutil>=2.8.2      # Date/time utilities
+pytz>=2023.3                # Timezone handling
+
+# Monitoring and logging
+structlog>=23.1.0           # Structured logging
+
+# Testing
+pytest>=7.4.0               # Testing framework
+pytest-cov>=4.1.0           # Coverage reporting
+pytest-asyncio>=0.21.0      # Async test support
+
+# Development tools
+black>=23.7.0               # Code formatter
+ruff>=0.0.287              # Fast Python linter
+pre-commit>=3.4.0          # Git hooks for code quality
+
+# Optional: Instagram API
+# instagrapi>=2.0.0          # Unofficial Instagram API client
+# facebook-business>=18.0.0   # Official Meta Business SDK
