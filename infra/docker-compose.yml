@@ -1,21 +1,22 @@
 version: "3.8"
-name: nexus
 
 services:
   postgres:
-    image: postgres:15-alpine
+    image: ankane/pgvector:latest
     container_name: nexus-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-faceless}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
-      POSTGRES_DB: ${POSTGRES_DB:-n8n}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    command: postgres -c fsync=off
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "127.0.0.1:5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-faceless}"]
+      test: ["CMD-SHELL", "pg_isready -U faceless -d n8n"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -32,13 +33,13 @@ services:
       DB_TYPE: postgresdb
       DB_POSTGRESDB_HOST: postgres
       DB_POSTGRESDB_PORT: 5432
-      DB_POSTGRESDB_DATABASE: ${POSTGRES_DB:-n8n}
-      DB_POSTGRESDB_USER: ${POSTGRES_USER:-faceless}
+      DB_POSTGRESDB_DATABASE: ${POSTGRES_DB}
+      DB_POSTGRESDB_USER: ${POSTGRES_USER}
       DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD}
 
       # Timezone
-      GENERIC_TIMEZONE: ${TIMEZONE:-Europe/Madrid}
-      TZ: ${TIMEZONE:-Europe/Madrid}
+      GENERIC_TIMEZONE: ${TIMEZONE}
+      TZ: ${TIMEZONE}
 
       # Execution
       EXECUTIONS_MODE: queue
@@ -47,11 +48,27 @@ services:
 
       # Security
       N8N_BASIC_AUTH_ACTIVE: "true"
-      N8N_BASIC_AUTH_USER: ${N8N_USER:-admin}
-      N8N_BASIC_AUTH_PASSWORD: ${N8N_PASSWORD:?N8N_PASSWORD required}
+      N8N_BASIC_AUTH_USER: ${N8N_USER}
+      N8N_BASIC_AUTH_PASSWORD: ${N8N_PASSWORD}
+      N8N_SECURE_COOKIE: "false"
+      
+      # Webhook URL (explicitly set for OAuth callbacks)
+      WEBHOOK_URL: http://100.122.207.23:5678
+      N8N_BASE_URL: http://100.122.207.23:5678
+      N8N_EDITOR_BASE_URL: http://100.122.207.23:5678
 
       # Paths
       N8N_USER_FOLDER: /home/node/.n8n
+
+      # API Keys (explicitly set here for n8n)
+      PEXELS_API_KEY: ${PEXELS_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      CANVA_CLIENT_ID: 
+      CANVA_CLIENT_SECRET: 
+
     ports:
       - "5678:5678"
     volumes:
@@ -86,7 +103,7 @@ services:
     container_name: nexus-code-server
     restart: unless-stopped
     environment:
-      PASSWORD: ${CODE_PASSWORD:?CODE_PASSWORD required}
+      PASSWORD: ${CODE_PASSWORD}
       SUDO_PASSWORD: ${CODE_PASSWORD}
       DEFAULT_WORKSPACE: /home/coder/project
     ports:
@@ -118,8 +135,8 @@ services:
       - netdata_lib:/var/lib/netdata
       - netdata_cache:/var/cache/netdata
     environment:
-      - NETDATA_CLAIM_TOKEN=${NETDATA_CLAIM_TOKEN:-}
-      - NETDATA_CLAIM_URL=${NETDATA_CLAIM_URL:-https://app.netdata.cloud}
+      - NETDATA_CLAIM_TOKEN=${NETDATA_CLAIM_TOKEN}
+      - NETDATA_CLAIM_URL=${NETDATA_CLAIM_URL}
     networks:
       - nexus
 
@@ -132,10 +149,10 @@ services:
     environment:
       - DOCKER_API_VERSION=1.44
       - WATCHTOWER_CLEANUP=true
-      - WATCHTOWER_POLL_INTERVAL=86400  # Check daily
+      - WATCHTOWER_POLL_INTERVAL=86400
       - WATCHTOWER_INCLUDE_STOPPED=false
       - WATCHTOWER_REVIVE_STOPPED=false
-      - TZ=${TIMEZONE:-Europe/Madrid}
+      - TZ=Europe/Madrid
     networks:
       - nexus
 
