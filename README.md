@@ -1,8 +1,9 @@
 # Nexus - AI Content Automation Platform
 
-**Status:** 🟡 Pre-deployment (Phase 0)
+**Status:** ✅ Phase 0 Complete - Production Ready
 **Goal:** Automated Instagram content creation and publishing
 **Platform:** Raspberry Pi 4 + Docker + n8n + AI
+**Tailscale IP:** 100.91.192.97
 
 ---
 
@@ -17,19 +18,22 @@ Nexus is a self-contained automation workstation designed to generate, render, a
 
 ## Current Status
 
-✅ **Complete:**
-- Comprehensive architecture documentation
-- Docker infrastructure templates
-- CI/CD pipeline configuration
-- Backup and security strategies
+✅ **Phase 0 Complete** ([Details](PHASE0_COMPLETED.md)):
+- Raspberry Pi 4 (8GB) with NASPi V2.0 case deployed
+- Ubuntu Server 22.04 LTS running from 465GB SSD
+- Docker 29.0.0 + Compose installed
+- Tailscale VPN active (100.91.192.97)
+- NASPi fan/power controls configured
+- System hardening applied (journald volatile, TRIM, zram)
+- 500GB backup HDD mounted and ready
 
 ⏳ **In Progress:**
-- Phase 0: Hardware setup and Ubuntu installation
+- Getting ethernet cable (WiFi blocked by aluminum case)
 
-🔜 **Upcoming:**
-- Phase 1: Docker deployment
-- Phase 2: Rendering pipeline (Python + Pillow)
-- Phase 3: Instagram integration
+🔜 **Next (Phase 1):**
+- Deploy Docker stack (PostgreSQL + n8n + code-server + Netdata)
+- Configure API secrets and n8n workflows
+- Set up automated backup scripts
 
 ---
 
@@ -45,27 +49,34 @@ Nexus is a self-contained automation workstation designed to generate, render, a
 - [`phase2_docs/`](phase2_docs/) - Security and operations
 - [`phase4_docs/`](phase4_docs/) - Compliance and incident response
 
-**When Ready to Deploy:**
+**SSH Access:**
 ```bash
-# 1. SSH to the device (assumes Tailscale/SSH configured)
-ssh didac@<nexus-tailscale-ip>
-# 2. Pull repo to /srv/projects/faceless_prod
-git clone <repo> /srv/projects/faceless_prod
-# 3. Create folders and permissions
-sudo mkdir -p /srv/db/postgres /srv/n8n_data /srv/outputs /mnt/backup
-sudo chown -R didac:didac /srv /mnt/backup
-# 4. Place .env in /srv/docker/.env with secrets
-# 5. Start Docker stack
-cd /srv/docker && sudo docker compose up -d
-# 6. Enable nexus-stack systemd unit (if configured)
-sudo systemctl enable --now nexus-stack.service
-# 7. Enable backup timer
-sudo systemctl enable --now backup-sync.timer
-# 8. Verify services
-sudo docker ps
-# 9. Check Netdata at http://<nexus-ip>:19999
-# 10. Run a test backup
-/srv/scripts/backup_sync.sh
+# Via Tailscale (from anywhere)
+ssh -i ~/.ssh/id_ed25519_nexus didac@100.91.192.97
+
+# Via local network
+ssh -i ~/.ssh/id_ed25519_nexus didac@192.168.1.148
+```
+
+**When Ready to Deploy Phase 1:**
+```bash
+# 1. Repository already at /srv/projects/nexus
+cd /srv/projects/nexus
+
+# 2. Configure secrets
+cp infra/.env.example /srv/docker/.env
+nano /srv/docker/.env  # Add API keys
+
+# 3. Deploy Docker stack
+cd /srv/docker && docker compose up -d
+
+# 4. Verify services
+docker ps
+
+# 5. Access services
+# n8n: http://100.91.192.97:5678
+# code-server: http://100.91.192.97:8080
+# Netdata: http://100.91.192.97:19999
 ```
 
 ## Technology Stack
@@ -77,7 +88,7 @@ sudo docker ps
 - External USB3 SSD (backups)
 
 **Software:**
-- **OS:** Ubuntu Server 24.04 LTS ARM64
+- **OS:** Ubuntu Server 22.04 LTS ARM64
 - **Runtime:** Docker + Docker Compose
 - **Automation:** n8n (workflow orchestration)
 - **Database:** PostgreSQL 15
@@ -168,7 +179,7 @@ Private project - not licensed for public use
 
 ## Maintainer
 
-**selto** - Content creator and automation enthusiast
+**selto** (didac@nexus) - Content creator and automation enthusiast
 
 **Created:** 2025-11-10
-**Last Updated:** 2025-11-11
+**Last Updated:** 2025-11-12 (Phase 0 Complete)
