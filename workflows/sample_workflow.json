@@ -1,4 +1,45 @@
 {
   "id": "car-20251110-001",
-  "title": "5 Facts About AI"
+  "title": "5 Facts About AI",
+  "created_at": "2025-11-10T09:00:00Z",
+  "niche": "Technology",
+  "slides": [
+    {
+      "index": 1,
+      "text": "AI is transforming industries worldwide.",
+      "image_candidates": [
+        "https://images.pexels.com/photos/8386440/pexels-photo-8386440.jpeg",
+        "https://images.pexels.com/photos/8386441/pexels-photo-8386441.jpeg"
+      ],
+      "layout": "text_image"
+    },
+    {
+      "index": 2,
+      "text": "Machine learning enables computers to learn from data.",
+      "image_candidates": [
+        "https://images.pexels.com/photos/8386442/pexels-photo-8386442.jpeg"
+      ],
+      "layout": "text_only"
+    },
+    {
+      "index": 3,
+      "text": "Neural networks mimic the human brain.",
+      "image_candidates": [],
+      "layout": "text_only"
+    },
+    {
+      "index": 4,
+      "text": "AI applications include image recognition and natural language processing.",
+      "image_candidates": [
+        "https://images.pexels.com/photos/8386443/pexels-photo-8386443.jpeg"
+      ],
+      "layout": "text_image"
+    },
+    {
+      "index": 5,
+      "text": "The future of AI holds endless possibilities.",
+      "image_candidates": [],
+      "layout": "text_only"
+    }
+  ]
 }

@@ -10,7 +10,7 @@ maintainer: selto
 Install and configure the core Docker services: PostgreSQL, n8n, code-server, Netdata and Watchtower. Provide Docker Compose example, volumes, and run/start/stop commands.
 
 ## Applies to
-nexus (Pi4 + NASPi V2.0 + USB backup) using Docker and docker-compose plugin on Ubuntu Server 24.04.
+nexus (Pi4 + NASPi V2.0 + USB backup) using Docker and docker-compose plugin on Ubuntu Server 22.04.
 
 ---
 ## 1. Install Docker and docker-compose plugin
@@ -150,6 +150,14 @@ sudo systemctl enable nexus-stack.service --now
 ## 5. n8n notes
 - Use the UI to configure credentials (Pexels, Telegram, Claude via proxy or API).
 - For heavy tasks, prefer Execute Command nodes to call scripts rather than running heavy jobs inside n8n process.
+
+### Troubleshooting
+- **Secure Cookie Error**: If you access n8n via HTTP (e.g., `http://<ip>:5678`) you may see a secure cookie error. To resolve this, add the following environment variable to the `n8n` service in your `docker-compose.yml`:
+  ```yaml
+  environment:
+    N8N_SECURE_COOKIE: "false"
+  ```
+  Then, recreate the container with `sudo docker compose up -d --force-recreate n8n`.
 
 ---
 ## 6. Postgres backups

@@ -8,10 +8,10 @@
 ---
 
 ## Phase 0: Hardware Setup (Week 1)
-**Status:** NEXT → You are here**
+**Status:** COMPLETED**
 
 ### 0.1 Ubuntu Server Installation on Pi 4
-- [ ] Download Ubuntu Server 24.04 LTS ARM64
+- [x] Download Ubuntu Server 22.04 LTS ARM64
 - [ ] Flash to internal SATA SSD using Raspberry Pi Imager
 - [ ] Boot Pi and complete initial setup (hostname: nexus, user: didac)
 - [ ] Configure SSH access with key authentication
@@ -41,7 +41,7 @@
 ---
 
 ## Phase 1: Docker Infrastructure (Week 2)
-**Status:** NOT STARTED**
+**Status:** IN PROGRESS**
 
 ### 1.1 Docker Installation
 - [ ] Install Docker Engine via convenience script
@@ -63,75 +63,40 @@
 - `/srv/docker/.env.example` - Template for secrets
 
 ### 1.3 Systemd Integration
-- [ ] Create nexus-stack.service unit
+**Status: SKIPPED** - Using `docker compose up -d` with `restart: unless-stopped` policies for auto-start instead of systemd service
 - [ ] Enable auto-start on boot
 - [ ] Test restart behavior
 
 ### 1.4 Initial Monitoring
-- [ ] Access Netdata dashboard
-- [ ] Configure basic Telegram alerts
-- [ ] Set up disk space warnings
+- [x] Access Netdata dashboard
+- [x] Configure basic Telegram alerts
+- [x] Set up disk space warnings
 
 ---
 
 ## Phase 2: Content Pipeline MVP (Week 3-4)
-**Status:** NOT STARTED**
-**Focus:** Instagram carousel generation only (simplest to start)**
+**Status:** IN PROGRESS**
 
-### 2.1 Rendering Infrastructure
-**Create:** `src/rendering/carousel.py`
-- Use Pillow for image compositing (lightweight, Pi-friendly)
-- Fixed template: 1080x1350px (IG portrait)
-- Simple text overlay with good contrast
-- 5 slides per carousel
+### 2.1 API Clients Implementation
+- [ ] Implement Claude API client for text generation
+- [ ] Implement Groq API client for text generation
+- [ ] Implement Pexels API client for image fetching
 
-**Dependencies:** `Pillow`, `requests`
+### 2.2 Content Generation Workflow
+- [ ] Create n8n workflow for AI text + image selection
+- [ ] Integrate with existing Canva template via API
+- [ ] Automate carousel creation and export
 
-### 2.2 API Integration
-**Create:** `src/api_clients/`
-- `pexels.py` - Image search and download
-- `groq_client.py` - Fast text generation (free)
-- `claude_client.py` - Review/refinement (paid, use sparingly)
-
-**Strategy:**
-- Groq generates initial facts/captions (fast, free)
-- Claude reviews and improves quality (slower, paid)
-- Pexels provides images (free with attribution)
-
-### 2.3 First n8n Workflow
-**Goal:** Semi-automated carousel creation
-
-**Workflow steps:**
-1. Manual trigger (run when you want content)
-2. Execute Command node → calls Groq for text generation
-3. Execute Command node → calls Pexels for images
-4. Execute Command node → runs rendering script
-5. Telegram notification with preview
-6. Human approval via Telegram buttons
-7. Store metadata in PostgreSQL
-
-**Why manual trigger first:** Validate the pipeline before automating
-
-### 2.4 Cost Tracking
-**Create:** PostgreSQL table for costs
-```sql
-CREATE TABLE api_costs (
-  id SERIAL PRIMARY KEY,
-  timestamp TIMESTAMPTZ DEFAULT NOW(),
-  provider VARCHAR(50),
-  operation VARCHAR(100),
-  tokens_used INT,
-  estimated_cost_usd DECIMAL(10,6),
-  workflow_id VARCHAR(100)
-);
-```
-
-Track every API call to monitor burn rate.
-
----
+### 2.3 Rendering and Testing
+- [ ] Test end-to-end pipeline: prompt → content → Python rendered carousel
+- [ ] Validate output quality and automation
+- [ ] Set up output storage in /srv/outputs
 
 ## Phase 3: Content Publishing (Week 5)
-**Status:** NOT STARTED**
+**Status:** SKIPPED FOR NOW**
+
+## Phase 4: Backup & Recovery (Week 6)
+**Status:** PAUSED**
 
 ### 3.1 Instagram API Integration
 - [ ] Create Instagram Business Account
@@ -157,12 +122,12 @@ Simple approach:
 **Status:** NOT STARTED**
 
 ### 4.1 Implement Backup Scripts
-- [ ] Create `/srv/scripts/backup_sync.sh` (incremental rsync)
-- [ ] Create `/srv/scripts/pg_backup.sh` (database dumps)
-- [ ] Create `/srv/scripts/dd_full_image.sh` (weekly full image)
+- [x] Create `/srv/scripts/backup_sync.sh` (incremental rsync)
+- [x] Create `/srv/scripts/pg_backup.sh` (database dumps)
+- [x] Create `/srv/scripts/dd_full_image.sh` (weekly full image)
 
 ### 4.2 Automate Backups
-- [ ] Set up systemd timers
+- [x] Set up systemd timers
 - [ ] Test restoration procedures
 - [ ] Verify checksums
 
