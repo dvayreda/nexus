@@ -56,7 +56,7 @@ services:
     volumes:
       - n8n_data:/home/node/.n8n
       - /srv/outputs:/data/outputs
-      - /srv/projects/faceless_prod:/data/workflows
+      - /srv/projects/nexus:/data/workflows
     depends_on:
       postgres:
         condition: service_healthy
