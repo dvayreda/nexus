@@ -1,251 +1,306 @@
-# CLAUDE.md
+# CLAUDE.md - AI Assistant Context
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Context file for Claude Code when working with the Nexus automation platform.
 
-## Project Status
+## System Overview
 
-**Current Phase:** Pre-deployment (Phase 0 - Hardware Setup)
-**Implementation Status:** Documentation complete, hardware setup pending
-**Priority Platform:** Instagram (1-3 posts/day)
-**Tech Stack Decision:** Claude (quality) + Groq (speed/free) + Pexels (free images) → transition to AI images when profitable
+**Nexus** is a self-hosted AI content automation platform running 24/7 on a Raspberry Pi 4. The system generates, renders, and publishes social media content using n8n workflow automation, AI APIs (Groq, Gemini), and Python image composition.
 
-**What Exists:**
-- Comprehensive documentation (phase1-4 docs)
-- FactsMind carousel generation system (fully operational)
-- Docker infrastructure with Python3 + Pillow support
-- n8n workflow with Groq + Gemini integration
-- Image composition scripts (`scripts/composite.py`)
-- Docker Compose with volume mounts
-- CI/CD pipeline definition
+**Current Production System:** FactsMind carousel generator
+- Platform: Instagram (1-3 posts/day)
+- Content: 5-slide educational carousels (science, psychology, tech, history, space)
+- Pipeline: Groq (fact generation) → Gemini (content expansion + AI images) → Python/Pillow (carousel composition) → Telegram (manual approval) → Manual Instagram upload
+- Status: Fully operational, generating daily content
 
-**What's Missing (Intentionally - Not Yet Built):**
-- Instagram API integration (manual upload for now)
-- Additional content pipelines beyond FactsMind
-- Backup automation scripts
-- Analytics dashboard
+**Infrastructure:**
+- Raspberry Pi 4 (4GB RAM, 2GB swap)
+- Ubuntu Server 22.04 LTS
+- 6 Docker containers (n8n, PostgreSQL, Redis, code-server, Netdata, Watchtower)
+- Tailscale network for secure remote access
+- Automated backups (config-based, not full disk images)
 
-**Next Steps:** See `IMPLEMENTATION_ROADMAP.md` for phased deployment plan.
+---
 
-## Project Overview
+## Working Environment (CRITICAL)
 
-Nexus is a self-contained automation workstation running on Raspberry Pi 4 designed to generate, render, and publish short-form content (carousels, shorts) using AI and scripted automation. The system emphasizes resilience, observability, and recoverability.
+**Two-System Setup:**
 
-**Core Architecture:** Three closed loops
-- **Creation loop**: AI prompts (Claude/Groq/Gemini) → generate text/facts → select images → render final assets
-- **Automation loop**: n8n orchestrates generation, reviews, approvals, and publishes to social channels
-- **Recovery loop**: rsync + rclone + dd images ensure backups and full system rebuilds
+```
+┌─────────────────────────────────────┐
+│ Your PC (Windows + WSL2)            │
+│ /home/dvayr/Projects_linux/nexus/   │  ← Edit files here
+│                                     │
+│ ↓ SSH via ~/ssh-nexus wrapper      │
+│                                     │
+└─────────────────────────────────────┘
+              ↓ Tailscale
+┌─────────────────────────────────────┐
+│ Raspberry Pi @ 100.122.207.23       │
+│ All services run here               │  ← Execute commands here
+│ Docker containers, n8n workflows    │
+└─────────────────────────────────────┘
+```
 
-## System Architecture
+### SSH Access (for all Pi commands)
 
-**Hardware:**
-- Raspberry Pi 4 with NASPi V2.0 case
-- Internal SATA SSD (system disk at `/dev/sda`)
-- External USB3 SSD (backup disk at `/dev/sdb`, mounted at `/mnt/backup`)
+**From WSL2, ALWAYS use the wrapper:**
+```bash
+~/ssh-nexus 'docker ps'
+~/ssh-nexus 'sudo systemctl restart smbd'
+~/ssh-nexus 'cat /srv/docker/docker-compose.yml'
+```
 
-**Services (Docker Compose stack):**
-- **PostgreSQL**: Primary database for n8n and event tracking
-- **n8n**: Workflow automation orchestrator (port 5678) - Custom image with Python3 + Pillow
-- **code-server**: Web-based IDE (port 8080)
-- **Netdata**: System monitoring dashboard (port 19999)
-- **Watchtower**: Automatic container updates
+**The wrapper handles:** WSL2 → PowerShell → SSH → Tailscale connectivity with proper path escaping and warning suppression.
 
-**Custom Docker Images:**
-- **n8n**: Built from `/srv/docker/n8n.Dockerfile` extending `n8nio/n8n:latest`
-  - Python 3.12.12 + Pillow 11.2.1 for image composition
-  - Supports image manipulation: JPEG, PNG, WEBP, TIFF with high-quality resampling
-  - PIL/Pillow for text rendering with custom fonts
+### File Access (primary method: Samba)
 
-**Key Directories:**
-- `/srv/docker` - Docker Compose stack and custom Dockerfiles
-- `/srv/projects/faceless_prod` - Production workflows and code
-- `/srv/projects/faceless_dev` - Development workspace
-- `/srv/outputs` - Generated content (carousels, videos)
-- `/srv/db/postgres` - PostgreSQL data volume
-- `/srv/n8n_data` - n8n workflow and credential storage
-- `/mnt/backup` - External backup disk mount point
+**Map these network shares in Windows:**
+- `\\100.122.207.23\nexus-docker` → `/srv/docker/` (docker-compose.yml, Dockerfiles)
+- `\\100.122.207.23\nexus-projects` → `/srv/projects/` (faceless_prod scripts/templates)
+- `\\100.122.207.23\nexus-scripts` → `/srv/scripts/` (backup scripts)
+- `\\100.122.207.23\nexus-outputs` → `/srv/outputs/` (generated carousels)
+
+**Workflow:**
+1. Edit files via Samba shares (use Windows apps, VS Code, etc.)
+2. Restart services via SSH: `~/ssh-nexus 'cd /srv/docker && sudo docker compose up -d'`
+3. Check logs via SSH: `~/ssh-nexus 'sudo docker logs nexus-n8n --tail 50'`
+
+**Alternative:** Copy files via SSH
+```bash
+~/ssh-nexus 'cat > /srv/docker/file.yml' < local_file.yml
+```
+
+### Web Access (from browser on your PC)
+
+- **n8n:** http://100.122.207.23:5678 (workflow editor)
+- **Netdata:** http://100.122.207.23:19999 (system monitoring)
+- **code-server:** http://100.122.207.23:8080 (web IDE)
+
+---
+
+## Architecture Quick Reference
+
+### Hardware & Disks
+
+**Raspberry Pi 4:**
+- 4GB RAM + 2GB swap (swappiness=10)
+- **CRITICAL:** Disk labels are confusing!
+  - `/dev/sdb` = System disk (465GB SSD at `/`)
+  - `/dev/sda` = Backup disk (465GB SSD at `/mnt/backup`)
+
+### Docker Services
+
+| Container | Port | Purpose |
+|-----------|------|---------|
+| nexus-n8n | 5678 | Workflow automation (custom image: Python3 + Pillow) |
+| nexus-postgres | 5432 | Database (n8n workflows, credentials) |
+| nexus-redis | 6379 | Queue for n8n executions |
+| nexus-code-server | 8080 | Web-based IDE |
+| nexus-netdata | 19999 | System monitoring |
+| nexus-watchtower | - | Auto-update containers |
+
+**n8n custom features:**
+- Python 3.12 + Pillow 11.2 installed for image composition
+- Task runners enabled (port 5679)
+- Environment variable access allowed for API keys
+
+### Critical Directory Structure
+
+**On the Pi (`/srv/`):**
+```
+/srv/
+├── docker/
+│   ├── docker-compose.yml          # Stack definition
+│   └── n8n.Dockerfile              # Custom n8n image with Python
+├── projects/
+│   ├── faceless_prod/
+│   │   ├── factsmind_workflow.json # n8n workflow export
+│   │   ├── scripts/composite.py    # Python carousel composition
+│   │   └── templates/              # Figma template PNGs (2160x2700)
+│   └── nexus/                      # Git repo clone
+├── outputs/
+│   └── final/                      # Generated carousel slides
+└── scripts/
+    ├── backup_sync.sh              # Comprehensive config backup
+    ├── pg_backup.sh                # PostgreSQL dump
+    └── dd_full_image.sh            # Full image (disabled)
+```
+
+**Docker volumes (managed):**
+- `docker_n8n_data` → n8n workflows and credentials
+- `docker_postgres_data` → PostgreSQL database
+- `docker_redis_data` → Redis persistence
+
+**Volume mounts (in n8n container):**
+- `/data/outputs` → `/srv/outputs`
+- `/data/scripts` → `/srv/projects/faceless_prod/scripts`
+- `/data/templates` → `/srv/projects/faceless_prod/templates`
+
+---
+
+## FactsMind Carousel Pipeline
+
+**Complete workflow (n8n orchestration):**
+
+```
+1. Schedule Trigger (1-3x daily)
+   ↓
+2. Groq API: Generate 5 mind-blowing facts
+   ↓
+3. For each fact:
+   - Gemini: Expand into hook/body/CTA
+   - Gemini: Generate AI image (slides 1-4 only)
+   - Write image to /data/outputs/slide_N.png
+   ↓
+4. Python Execute Command (for each slide):
+   python3 /data/scripts/composite.py <slide_num> <type> "<title>" "<subtitle>"
+   ↓
+5. Composite script (composite.py):
+   - Load Figma template PNG (2160x2700px)
+   - Paste AI image with aspect ratio preservation (center crop)
+   - Render text overlays (180pt title, 85pt subtitle)
+   - Save to /data/outputs/final/slide_N_final.png
+   ↓
+6. Telegram: Send carousel for manual approval
+   ↓
+7. Manual: Download from Samba share, upload to Instagram
+```
+
+**Template types:**
+- `template_hook_question.png` - Slide 1 (hook with question)
+- `template_progressive_reveal.png` - Slides 2-4 (body content)
+- `template_call_to_action.png` - Slide 5 (CTA + branding)
+
+**Image specifications:**
+- Canvas: 2160x2700px (Instagram carousel optimal)
+- AI images: 1024x1024 → smart crop to 2160x1760
+- Fonts: DejaVuSans-Bold (180pt), DejaVuSans (85pt)
+- Text positioning: Y=1950 (title), Y=2200 (subtitle)
+
+---
+
+## Important Gotchas
+
+### Path Conventions
+- ✅ **Always use `/data/` paths inside n8n** (volume mounts)
+- ❌ Never use `/tmp/` (not persistent across container restarts)
+- Example: `/data/outputs/slide_1.png` not `/tmp/slide_1.png`
+
+### Disk Confusion
+- `/dev/sda` = BACKUP disk (not system!)
+- `/dev/sdb` = SYSTEM disk (not backup!)
+- This is backwards from typical convention
+
+### File Transfers
+- **Primary:** Edit via Samba shares (user-friendly, persistent)
+- **Alternative:** SSH copy with heredoc for complex files
+- **Restart required:** After editing docker-compose.yml or scripts
+
+### Python in n8n
+- n8n container has Python 3.12 + Pillow pre-installed
+- No need for separate Python container
+- Execute via: `python3 /data/scripts/script.py args`
+
+---
+
+## Backup Strategy
+
+**Automated (systemd timers, daily at 00:00):**
+- `file-backup.timer` → Comprehensive config backup (n8n volumes, systemd units, SSH config, home dir, package lists)
+- `pg-backup.timer` → PostgreSQL dumps (30-day retention)
+
+**What's backed up:**
+- ✅ All `/srv/` application files
+- ✅ n8n workflows & credentials (Docker volume)
+- ✅ PostgreSQL database (SQL dumps)
+- ✅ Systemd units, SSH config, Docker config
+- ✅ User home directory, package lists
+
+**What's NOT backed up (requires manual reinstall):**
+- ❌ Base OS (Raspberry Pi OS)
+- ❌ Docker engine
+- ❌ APT packages (list exported for easy reinstall)
+
+**Backup location:** `/mnt/backup/` (458GB, 1% used after removing full disk images)
+
+**Restore instructions:** See `/mnt/backup/RESTORE_INSTRUCTIONS.md` or `docs/operations/maintenance.md`
+
+---
 
 ## Common Commands
 
-### Docker Stack Management
+### Docker Management
 ```bash
-# Start all services
-cd /srv/docker && sudo docker compose up -d
+# View all containers
+~/ssh-nexus 'sudo docker ps'
 
-# View running containers
-sudo docker ps
+# Restart n8n after config change
+~/ssh-nexus 'cd /srv/docker && sudo docker compose up -d n8n'
 
-# View logs for a service
-sudo docker logs n8n --tail 50
-sudo docker logs postgres --tail 50
+# View n8n logs
+~/ssh-nexus 'sudo docker logs nexus-n8n --tail 50'
 
-# Restart a specific service
-sudo docker compose restart n8n
-
-# Stop all services
-sudo docker compose down
-
-# Rebuild custom n8n image (after modifying n8n.Dockerfile)
-cd /srv/docker && sudo docker compose build n8n
-cd /srv/docker && sudo docker compose up -d n8n
-
-# Verify Python and Pillow in n8n container
-sudo docker exec nexus-n8n python3 --version
-sudo docker exec nexus-n8n python3 -c "import PIL; print(f'Pillow {PIL.__version__}')"
-```
-
-### Backup Operations
-```bash
-# Run incremental rsync backup
-/srv/scripts/backup_sync.sh
-
-# Backup PostgreSQL database
-/srv/scripts/pg_backup.sh
-
-# Create full system image (weekly)
-/srv/scripts/dd_full_image.sh
+# Rebuild custom n8n image (after Dockerfile change)
+~/ssh-nexus 'cd /srv/docker && sudo docker compose build n8n && sudo docker compose up -d n8n'
 ```
 
 ### System Monitoring
 ```bash
-# Check service status via systemd
-sudo systemctl status nexus-stack.service
-sudo systemctl status backup-sync.timer
+# Check system health
+~/ssh-nexus 'free -h && df -h && vcgencmd measure_temp'
 
-# View disk usage
-df -h /srv /mnt/backup
+# View Netdata (browser): http://100.122.207.23:19999
 
-# Check Docker resource usage
-sudo docker stats --no-stream
-
-# Monitor system logs
-sudo journalctl -u nexus-stack.service -n 200
-sudo journalctl -u backup-sync.service -n 50
+# Check backup timers
+~/ssh-nexus 'systemctl list-timers backup*.timer pg-backup.timer'
 ```
 
-### Testing
+### Backup Operations
 ```bash
-# Run tests (from repository root)
-python -m pytest tests/test_render.py -q
+# Manual backup run
+~/ssh-nexus '/srv/scripts/backup_sync.sh'
+~/ssh-nexus '/srv/scripts/pg_backup.sh'
 
-# Install test dependencies
-pip install jsonschema pytest
+# Check backup disk space
+~/ssh-nexus 'df -h /mnt/backup'
 
-# Validate manifest against schema
-python tests/test_render.py
+# View backup contents
+~/ssh-nexus 'ls -lh /mnt/backup/docker-volumes/n8n_data/'
 ```
 
-### CI/CD
-```bash
-# GitHub Actions runs on push to main
-# CI workflow: .github/workflows/ci.yml
-# - Sets up Python 3.11
-# - Installs jsonschema, pytest
-# - Runs test_render.py
-```
+---
 
-## Data Flow Architecture
+## Documentation Map
 
-1. **Content Generation**: n8n scheduled triggers call AI APIs to generate text content
-2. **Image Generation**: Gemini AI generates custom images for carousel slides 1-4
-3. **Rendering**: Python + Pillow scripts composite images onto Figma templates with text overlays
-   - Smart aspect ratio preservation with center-crop
-   - High-quality font rendering (180pt title, 85pt subtitle)
-4. **Review Gate**: Telegram manual review step (human-in-the-loop approval)
-5. **Publishing**: n8n uploads approved content to platform APIs (Instagram/X/TikTok/YouTube)
-6. **Tracking**: Post metadata stored in PostgreSQL events table for analytics
+**Quick references (this file):**
+- Current operational state
+- FactsMind workflow
+- Critical gotchas
 
-## JSON Schema and Manifests
+**Detailed documentation:**
+- **Setup:** `docs/setup/quickstart.md` - Complete Pi setup from scratch
+- **FactsMind project:** `docs/projects/factsmind.md` - Build log and implementation details
+- **Maintenance:** `docs/operations/maintenance.md` - Backup/restore procedures, troubleshooting
+- **Architecture:** `docs/architecture/system-reference.md` - Deep technical reference
+- **Gemini context:** `docs/ai-context/gemini.md` - Instructions for Google Gemini
 
-Carousel manifests follow the schema at `schemas/carousel_manifest.schema.json`:
-- Required fields: `id`, `title`, `slides`, `created_at`
-- Each slide must have: `index`, `text`, `image_candidates`
-- Minimum 5 slides per carousel
-- Optional: `niche`, `author`, `metadata`, per-slide `layout`
+**Root README:** `/README.md` - Project overview and quick links
 
-Example manifest location: `workflows/sample_workflow.json`
+---
 
-## Security Considerations
+## Development Notes
 
-- **Access**: SSH key-only authentication, no password auth enabled
-- **Network**: Tailscale for secure remote access, no direct internet exposure
-- **Secrets**: Stored in n8n credential store or Docker secrets, never committed to git
-- **Containers**: Read-only where possible, tmpfs for ephemeral data
-- **Backup Encryption**: LUKS encryption available for backup disk when transported
+**Git workflow:**
+- Commits use conventional format: `feat:`, `fix:`, `refactor:`, etc.
+- Include `🤖 Generated with Claude Code` in commit messages
+- `Co-Authored-By: Claude <noreply@anthropic.com>`
 
-## Backup and Recovery Strategy
+**File naming:**
+- Python/scripts: `snake_case.py`
+- Branches: `kebab-case`
+- Dockerfiles: `PascalCase.Dockerfile`
 
-**Retention Policies:**
-- Ephemeral data (temp files): 7 days
-- Operational data (outputs): 30 days local, then archived offsite
-- Critical data (DB dumps, images): 6 months encrypted offsite
-
-**Restoration:**
-```bash
-# Restore PostgreSQL from backup
-gunzip -c /mnt/backup/db/postgres_n8n_YYYY-MM-DD.sql.gz | sudo docker exec -i postgres psql -U faceless -d n8n
-
-# Restore files from daily backup
-rsync -av /mnt/backup/daily/YYYY-MM-DD/ /srv/outputs/
-
-# Restore full system image (destructive)
-sudo dd if=/mnt/backup/images/nexus-YYYY-MM-DD.img of=/dev/sda bs=4M conv=sync,noerror status=progress
-```
-
-## Development Workflow
-
-- **Naming conventions**: `snake_case` for files, `kebab-case` for branches
-- **Version control**: Feature branches and PRs, keep main deployable
-- **Releases**: Semantic versioning with CHANGELOG.md updates
-- **Pre-commit**: Use `pre-commit` hooks for formatting (black, trailing-whitespace, etc.)
-
-## Troubleshooting
-
-Common issues and diagnostics:
-```bash
-# Check for throttling (undervoltage)
-vcgencmd get_throttled  # Should return 0x0
-
-# Check temperature
-vcgencmd measure_temp
-
-# Verify backup disk mounted
-mount | grep /mnt/backup
-
-# Check failed systemd units
-sudo systemctl --failed
-
-# Verify SHA256 checksums in backup
-cd /mnt/backup/daily/$(date +%F) && sha256sum -c checksums.sha256
-```
-
-## Cleanup & Polish
-
-The codebase has been cleaned up to remove common warnings and improve workflow quality:
-
-**Fixed Warnings:**
-- ✅ Docker Compose `version` field removed (obsolete in modern Docker Compose)
-- ✅ SSH identity file warning suppressed in `~/ssh-nexus` wrapper
-- ✅ PowerShell stderr filtering for clean output
-
-**Clean Workflow:**
-- No version warnings when running `docker compose` commands
-- No SSH warnings when connecting to RPi via Tailscale
-- Python scripts run without deprecation warnings
-- All file paths use proper `/data/` mounts (persistent, not `/tmp/`)
-
-**SSH Wrapper (`~/ssh-nexus`):**
-```bash
-# Filters out "Identity file not accessible" warnings
-# Uses proper Windows path escaping for WSL2 → PowerShell → SSH
-powershell.exe -Command "ssh -i \"\$env:USERPROFILE\.ssh\id_ed25519_nexus\" didac@100.122.207.23 '$*' 2>&1 | Where-Object { \$_ -notmatch 'Identity file.*not accessible' }"
-```
-
-## Documentation Structure
-
-The repository contains comprehensive phase-based documentation:
-- **phase1_docs**: System setup and architecture, application installation
-- **phase2_docs**: Security hardening, operations and maintenance procedures
-- **phase4_docs**: Security compliance and incident response
-- **Nexus_Documentation_v1.md**: Consolidated reference of all phases
-
-Start with `phase1_docs/00_Nexus_Project_Overview.md` for the conceptual foundation.
+**Testing:**
+- No formal test suite currently
+- Manual testing via n8n workflow execution
+- Schema validation in `schemas/carousel_manifest.schema.json`
