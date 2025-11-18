@@ -1,34 +1,48 @@
-# Nexus Documentation
+# 📚 Nexus Documentation
+
+**📌 START HERE:** See `/DOCUMENTATION_INDEX.md` for complete navigation guide
 
 Organized documentation for the Nexus AI content automation platform.
 
 ## Structure
 
-### 📦 [setup/](setup/)
-Installation, configuration, and getting started guides.
+### 📘 CURRENT OPERATIONS (Daily Use)
 
-- **[quickstart.md](setup/quickstart.md)** - Complete setup guide for Nexus on Raspberry Pi
+**[🆘 operations/](operations/)** - Day-to-day operations
+- **[helper-scripts.md](operations/helper-scripts.md)** - 14 operational scripts (NEW!)
+- **[maintenance.md](operations/maintenance.md)** - System maintenance & troubleshooting
+- **[production-hardening.md](operations/production-hardening.md)** - Security & monitoring (NEW!)
+- **[n8n-mcp-setup.md](operations/n8n-mcp-setup.md)** - n8n MCP integration
 
-### 🚀 [projects/](projects/)
-Project-specific documentation for content pipelines.
+**[📦 setup/](setup/)** - Installation guides
+- **[quickstart.md](setup/quickstart.md)** - Complete Raspberry Pi setup
 
-- **[factsmind.md](projects/factsmind.md)** - FactsMind Instagram carousel system (production)
+**[🚀 projects/](projects/)** - Project-specific docs
+- **[factsmind.md](projects/factsmind.md)** - FactsMind Instagram system (production)
 
-### ⚙️ [operations/](operations/)
-Day-to-day operations, maintenance, and troubleshooting.
+**[🤖 ai-context/](ai-context/)** - AI assistant instructions
+- **[claude.md](ai-context/claude.md)** - Claude Code instructions
+- **[gemini.md](ai-context/gemini.md)** - Gemini AI instructions
 
-- **[maintenance.md](operations/maintenance.md)** - System maintenance procedures and troubleshooting
+### 🔮 STRATEGIC PLANNING (Future)
 
-### 🏗️ [architecture/](architecture/)
-System design, architecture decisions, and technical reference.
+**[strategic-analysis/](strategic-analysis/)** - Future vision (NEW!)
+- **[architecture/nexus-2.0-architecture.md](strategic-analysis/architecture/nexus-2.0-architecture.md)** - Scaling options
+- **[business/monetization-strategy.md](strategic-analysis/business/monetization-strategy.md)** - Business models
 
-- **[system-reference.md](architecture/system-reference.md)** - Complete system architecture reference
+**[future-implementations/](future-implementations/)** - Implementation guides (NEW!)
+- **[multi-model-ensemble.md](future-implementations/multi-model-ensemble.md)** - +30% quality boost
+- **[quality-validator.md](future-implementations/quality-validator.md)** - AI content validation
+- **[performance-optimization.md](future-implementations/performance-optimization.md)** - 2x speed
+- **[rag-fact-generation.md](future-implementations/rag-fact-generation.md)** - Knowledge base
 
-### 🤖 [ai-context/](ai-context/)
-Instructions and context for AI assistants working with this codebase.
+### 📊 REFERENCE
 
-- **[claude.md](ai-context/claude.md)** - Instructions for Claude Code
-- **[gemini.md](ai-context/gemini.md)** - Instructions for Google Gemini
+**[🏗️ architecture/](architecture/)** - Technical reference
+- **[system-reference.md](architecture/system-reference.md)** - Current system architecture
+
+**[🧪 testing/](testing/)** - Testing docs (NEW!)
+- **[test-suite-implementation.md](testing/test-suite-implementation.md)** - Complete test suite
 
 ## Quick Navigation
 
@@ -37,8 +51,11 @@ Instructions and context for AI assistants working with this codebase.
 - 🆕 **Set up Nexus** → [setup/quickstart.md](setup/quickstart.md)
 - 🎨 **Understand FactsMind** → [projects/factsmind.md](projects/factsmind.md)
 - 🔧 **Fix an issue** → [operations/maintenance.md](operations/maintenance.md)
+- ⚡ **Use helper scripts** → [operations/helper-scripts.md](operations/helper-scripts.md) ✨NEW
 - 🏛️ **Learn the architecture** → [architecture/system-reference.md](architecture/system-reference.md)
 - 🤖 **Work with AI assistants** → [ai-context/claude.md](ai-context/claude.md)
+- 🚀 **Plan for the future** → `/DOCUMENTATION_INDEX.md` ✨NEW
+- 🧪 **Run tests** → [testing/test-suite-implementation.md](testing/test-suite-implementation.md) ✨NEW
 
 ## Documentation Principles
 
