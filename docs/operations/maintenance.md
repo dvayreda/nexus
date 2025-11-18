@@ -43,10 +43,24 @@ Save as `/srv/scripts/pg_backup.sh`
 ```bash
 #!/usr/bin/env bash
 set -euo pipefail
-OUT="/mnt/backup/db/postgres_n8n_$(date +%F).sql.gz"
-mkdir -p "$(dirname "$OUT")"
-sudo docker exec -t postgres pg_dump -U faceless n8n | gzip > "$OUT"
-sha256sum "$OUT" > "${OUT}.sha256"
+
+# Ensure the backup directory exists
+mkdir -p /mnt/backup/db
+
+# Define the output file path with current date
+OUT_FILE="/mnt/backup/db/postgres_n8n_$(date +%F).sql.gz"
+
+# Dump the database, compress it, and write to the output file
+sudo docker exec -t nexus-postgres pg_dump -U faceless n8n | gzip > "$OUT_FILE"
+
+# Create checksum
+sha256sum "$OUT_FILE" > "${OUT_FILE}.sha256"
+
+# Rotate: keep only last 30 daily database backups
+find /mnt/backup/db -name "postgres_n8n_*.sql.gz" -type f -mtime +30 -delete
+find /mnt/backup/db -name "postgres_n8n_*.sql.gz.sha256" -type f -mtime +30 -delete
+
+echo "Database backup completed: $OUT_FILE"
 ```
 
 ### dd_full_image.sh (weekly full image)
@@ -54,11 +68,33 @@ Save as `/srv/scripts/dd_full_image.sh`
 ```bash
 #!/usr/bin/env bash
 set -euo pipefail
-IMG="/mnt/backup/images/nexus-$(date +%F).img"
-mkdir -p /mnt/backup/images
-sudo dd if=/dev/sda of="$IMG" bs=4M conv=sync,noerror status=progress
-sha256sum "$IMG" > "${IMG}.sha256"
-# optional compression afterwards (careful with space)
+
+# Define the source disk (assuming /dev/sda is the system disk)
+SOURCE_DISK="/dev/sda"
+
+# Define the output directory on the backup drive
+OUTPUT_DIR="/mnt/backup/images"
+
+# Ensure the output directory exists
+mkdir -p "$OUTPUT_DIR"
+
+# Define the output file path
+OUT_FILE="$OUTPUT_DIR/nexus-$(date +%F).img.gz"
+
+# Create the full disk image using dd and compress it with gzip
+# Use bs=4M for better performance, conv=sync,noerror to handle read errors gracefully
+sudo dd if="$SOURCE_DISK" bs=4M conv=sync,noerror status=progress | gzip > "$OUT_FILE"
+
+# Create checksum
+sha256sum "$OUT_FILE" > "${OUT_FILE}.sha256"
+
+# Rotate: keep only last 2 weekly full images (each is ~436G)
+# This keeps current backup plus 1 previous for safety
+cd "$OUTPUT_DIR"
+ls -t nexus-*.img.gz 2>/dev/null | tail -n +3 | xargs -r rm -f
+ls -t nexus-*.img.gz.sha256 2>/dev/null | tail -n +3 | xargs -r rm -f
+
+echo "Full system image backup completed: $OUT_FILE"
 ```
 
 ---
