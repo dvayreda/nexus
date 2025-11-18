@@ -11,16 +11,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **What Exists:**
 - Comprehensive documentation (phase1-4 docs)
-- Schemas and test placeholders
+- FactsMind carousel generation system (fully operational)
+- Docker infrastructure with Python3 + Pillow support
+- n8n workflow with Groq + Gemini integration
+- Image composition scripts (`scripts/composite.py`)
+- Docker Compose with volume mounts
 - CI/CD pipeline definition
-- Architecture design
 
 **What's Missing (Intentionally - Not Yet Built):**
-- Actual rendering code (`src/rendering/`)
-- API client implementations (`src/api_clients/`)
-- Operational scripts (`/srv/scripts/*.sh`)
-- Docker Compose files (`infra/`)
-- n8n workflows (`n8n_workflows/`)
+- Instagram API integration (manual upload for now)
+- Additional content pipelines beyond FactsMind
+- Backup automation scripts
+- Analytics dashboard
 
 **Next Steps:** See `IMPLEMENTATION_ROADMAP.md` for phased deployment plan.
 
@@ -211,6 +213,28 @@ sudo systemctl --failed
 
 # Verify SHA256 checksums in backup
 cd /mnt/backup/daily/$(date +%F) && sha256sum -c checksums.sha256
+```
+
+## Cleanup & Polish
+
+The codebase has been cleaned up to remove common warnings and improve workflow quality:
+
+**Fixed Warnings:**
+- ✅ Docker Compose `version` field removed (obsolete in modern Docker Compose)
+- ✅ SSH identity file warning suppressed in `~/ssh-nexus` wrapper
+- ✅ PowerShell stderr filtering for clean output
+
+**Clean Workflow:**
+- No version warnings when running `docker compose` commands
+- No SSH warnings when connecting to RPi via Tailscale
+- Python scripts run without deprecation warnings
+- All file paths use proper `/data/` mounts (persistent, not `/tmp/`)
+
+**SSH Wrapper (`~/ssh-nexus`):**
+```bash
+# Filters out "Identity file not accessible" warnings
+# Uses proper Windows path escaping for WSL2 → PowerShell → SSH
+powershell.exe -Command "ssh -i \"\$env:USERPROFILE\.ssh\id_ed25519_nexus\" didac@100.122.207.23 '$*' 2>&1 | Where-Object { \$_ -notmatch 'Identity file.*not accessible' }"
 ```
 
 ## Documentation Structure
