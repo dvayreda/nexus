@@ -227,7 +227,45 @@ Context file for Claude Code when working with the Nexus automation platform.
 
 ---
 
-## Common Commands
+## Helper Scripts (Token Optimizers)
+
+These scripts reduce token usage by 60-70% by consolidating multi-command operations into single commands.
+
+**On the Pi (`~/`):**
+- `nexus-quick.sh` - Ultra-fast health check (containers, RAM, disk, temp, errors) [MOST USED]
+- `nexus-health.sh` - Comprehensive system status
+- `nexus-n8n-status.sh` - n8n workflow debugging
+- `nexus-backup-status.sh` - Backup status and history
+- `nexus-carousel-recent.sh` - Recent carousel outputs
+- `nexus-logs.sh <service> [lines]` - Smart log viewer
+- `nexus-restart.sh <service>` - Restart and verify
+- `nexus-cleanup.sh` - Free up disk space
+- `nexus-compare.sh snapshot|diff` - Before/after comparison
+- `nexus-find.sh <keyword>` - Quick file search
+
+**On WSL2 (local):**
+- `nexus-git-push "message"` - Automated git workflow
+- `nexus-deploy <file> <remote> <service>` - Deploy and restart
+
+**Quick examples:**
+```bash
+# Start of session
+~/ssh-nexus '~/nexus-quick.sh'
+
+# After changes
+nexus-deploy infra/docker-compose.yml /srv/docker/docker-compose.yml n8n
+nexus-git-push "fix: Update config"
+
+# Debugging
+~/ssh-nexus '~/nexus-health.sh'
+~/ssh-nexus '~/nexus-n8n-status.sh'
+```
+
+**Full documentation:** See `scripts/README.md` for detailed usage and examples.
+
+---
+
+## Common Commands (Fallback)
 
 ### Docker Management
 ```bash
