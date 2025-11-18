@@ -87,3 +87,8 @@ htmlcov/
 
 # Documentation builds
 docs/_build/
+
+# Documentation junk
+output.txt
+output_carousels/
+*:Zone.Identifier
