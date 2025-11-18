@@ -20,22 +20,93 @@ nexus host environment and Dockerized services. Focus on backups, verification, 
 - Check `/var/log/backup_sync.log` for recent rsync errors.
 
 ---
-## 2. Backup scripts (real)
-### backup_sync.sh (incremental rsync)
+## 2. Backup Strategy
+
+### What's Backed Up
+✅ **Application data** - /srv/ directory (docker-compose, scripts, templates, outputs)
+✅ **n8n workflows & credentials** - Docker volume backup
+✅ **Database** - PostgreSQL dumps (SQL format)
+✅ **System configs** - Systemd units, SSH config, Docker config
+✅ **User data** - Home directory, SSH keys, bash history
+✅ **Package list** - dpkg selections for reinstall
+
+### What's NOT Backed Up
+❌ **Base OS** - Raspberry Pi OS (needs fresh install)
+❌ **Installed packages** - Only list exported (reinstall required)
+❌ **Docker engine** - Needs manual reinstall
+❌ **Tailscale** - Needs manual reinstall
+
+### Recovery Time
+- **Config backup restore**: 1-1.5 hours (works on any hardware)
+- **Full image restore**: 2-3 hours (requires exact disk size, disabled to save space)
+
+See `/mnt/backup/RESTORE_INSTRUCTIONS.md` for detailed restore procedures.
+
+---
+## 3. Backup scripts (real)
+### backup_sync.sh (comprehensive incremental backup)
 Save as `/srv/scripts/backup_sync.sh` and `chmod +x`
 
 ```bash
 #!/usr/bin/env bash
 set -euo pipefail
-SRC="/srv/outputs/"
-DST="/mnt/backup/daily/$(date +%F)/"
-mkdir -p "$DST"
-rsync -av --delete --partial --links --perms --times --compress "$SRC" "$DST"
-# rotate: keep 30 daily snapshots
-find /mnt/backup/daily -maxdepth 1 -type d -mtime +30 -exec rm -rf {} \;
-# checksum manifest
-cd "$DST"
-find . -type f -print0 | xargs -0 sha256sum > checksums.sha256
+
+# backup_sync.sh - Comprehensive backup of critical system data and configurations
+# Backs up everything needed to rebuild Nexus (except OS base image)
+
+BACKUP_ROOT="/mnt/backup"
+TIMESTAMP=$(date +%F_%H-%M-%S)
+
+# Ensure backup directories exist
+mkdir -p "$BACKUP_ROOT"/{files,configs,docker-volumes}
+
+echo "=== Starting backup at $(date) ==="
+
+# 1. Application files (/srv/)
+echo "[1/7] Backing up /srv/ application files..."
+rsync -av --delete /srv/ "$BACKUP_ROOT/files/" 2>&1 | tail -5
+
+# 2. Docker named volumes (n8n workflows, postgres data via volume backup)
+echo "[2/7] Backing up Docker volumes (n8n_data)..."
+sudo rsync -av --delete \
+  /var/lib/docker/volumes/docker_n8n_data/_data/ \
+  "$BACKUP_ROOT/docker-volumes/n8n_data/" 2>&1 | tail -5
+
+# Note: postgres_data backed up via pg_backup.sh (SQL dump is better)
+
+# 3. Systemd unit files (timers, services)
+echo "[3/7] Backing up systemd units..."
+sudo rsync -av --delete \
+  /etc/systemd/system/ \
+  "$BACKUP_ROOT/configs/systemd/" \
+  --exclude="*.wants" \
+  --exclude="*.requires" 2>&1 | tail -5
+
+# 4. SSH configuration
+echo "[4/7] Backing up SSH config..."
+sudo rsync -av /etc/ssh/ "$BACKUP_ROOT/configs/ssh/" 2>&1 | tail -5
+
+# 5. User home directory (excluding cache)
+echo "[5/7] Backing up user home directory..."
+rsync -av --delete \
+  /home/didac/ \
+  "$BACKUP_ROOT/configs/home-didac/" \
+  --exclude=".cache" \
+  --exclude=".local/share/Trash" 2>&1 | tail -5
+
+# 6. Installed packages list
+echo "[6/7] Exporting installed packages list..."
+dpkg --get-selections > "$BACKUP_ROOT/configs/dpkg-selections.txt"
+dpkg -l > "$BACKUP_ROOT/configs/dpkg-full-list.txt"
+
+# 7. Docker daemon configuration
+echo "[7/7] Backing up Docker config..."
+if [ -d /etc/docker ]; then
+  sudo rsync -av /etc/docker/ "$BACKUP_ROOT/configs/docker/" 2>&1 | tail -5
+fi
+
+echo "=== Backup completed at $(date) ==="
+echo "Backup size: $(du -sh $BACKUP_ROOT | cut -f1)"
 ```
 
 ### pg_backup.sh (Postgres dump)
@@ -63,42 +134,8 @@ find /mnt/backup/db -name "postgres_n8n_*.sql.gz.sha256" -type f -mtime +30 -del
 echo "Database backup completed: $OUT_FILE"
 ```
 
-### dd_full_image.sh (weekly full image)
-Save as `/srv/scripts/dd_full_image.sh`
-```bash
-#!/usr/bin/env bash
-set -euo pipefail
-
-# Define the source disk (assuming /dev/sda is the system disk)
-SOURCE_DISK="/dev/sda"
-
-# Define the output directory on the backup drive
-OUTPUT_DIR="/mnt/backup/images"
-
-# Ensure the output directory exists
-mkdir -p "$OUTPUT_DIR"
-
-# Define the output file path
-OUT_FILE="$OUTPUT_DIR/nexus-$(date +%F).img.gz"
-
-# Create the full disk image using dd and compress it with gzip
-# Use bs=4M for better performance, conv=sync,noerror to handle read errors gracefully
-sudo dd if="$SOURCE_DISK" bs=4M conv=sync,noerror status=progress | gzip > "$OUT_FILE"
-
-# Create checksum
-sha256sum "$OUT_FILE" > "${OUT_FILE}.sha256"
-
-# Rotate: keep only last 2 weekly full images (each is ~436G)
-# This keeps current backup plus 1 previous for safety
-cd "$OUTPUT_DIR"
-ls -t nexus-*.img.gz 2>/dev/null | tail -n +3 | xargs -r rm -f
-ls -t nexus-*.img.gz.sha256 2>/dev/null | tail -n +3 | xargs -r rm -f
-
-echo "Full system image backup completed: $OUT_FILE"
-```
-
 ---
-## 3. systemd timers (replace cron) examples
+## 4. systemd timers (replace cron) examples
 ### /etc/systemd/system/backup-sync.service
 ```ini
 [Unit]
@@ -127,23 +164,27 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now backup-sync.timer
 ```
 
+**Note:** Full image backup (dd_full_image.sh) has been disabled to save disk space (was 436GB). See `/mnt/backup/RESTORE_INSTRUCTIONS.md` for config-based restore procedures.
+
 ---
-## 4. Restore quick steps (high-level)
+## 5. Restore quick steps (high-level)
 - To restore postgres DB:
 ```bash
 gunzip -c /mnt/backup/db/postgres_n8n_2025-11-09.sql.gz | sudo docker exec -i postgres psql -U faceless -d n8n
 ```
-- To restore files:
+- To restore application files:
 ```bash
-rsync -av /mnt/backup/daily/2025-11-09/ /srv/outputs/
+rsync -av /mnt/backup/files/ /srv/
 ```
-- To restore full image (careful):
+- To restore n8n workflows:
 ```bash
-sudo dd if=/mnt/backup/images/nexus-2025-11-09.img of=/dev/sda bs=4M conv=sync,noerror status=progress
+sudo rsync -av /mnt/backup/docker-volumes/n8n_data/ /var/lib/docker/volumes/docker_n8n_data/_data/
 ```
 
+See `/mnt/backup/RESTORE_INSTRUCTIONS.md` for full system restore from scratch.
+
 ---
-## 5. Verification and checks
+## 6. Verification and checks
 Add periodic verification cron (or systemd timer) to run `/srv/scripts/verify_backups.sh` which checks sha256 manifests and reports via Telegram.
 
 `/srv/scripts/verify_backups.sh` (example)
@@ -160,7 +201,7 @@ sha256sum -c checksums.sha256 || { echo "Checksum failed"; exit 2; }
 ```
 
 ---
-## 6. Log rotation and cleanup
+## 7. Log rotation and cleanup
 Configure `logrotate` for docker logs if using json-file driver (or rely on daemon log-opts). Example `/etc/logrotate.d/nexus`:
 ```
 /var/lib/docker/containers/*/*.log {
@@ -174,7 +215,7 @@ Configure `logrotate` for docker logs if using json-file driver (or rely on daem
 ```
 
 ---
-## 7. Monitoring and alerts
+## 8. Monitoring and alerts
 - Netdata installed as container. Configure `health_alarm_notify.conf` to call a small script that posts to Telegram via bot token.
 - Key alerts: disk < 10%, postgres not running, n8n failure rate > 5%, high I/O waits.
 - Example minimal alert script `/srv/scripts/netdata_alert_to_telegram.sh`:
@@ -187,13 +228,13 @@ curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" -d chat_i
 ```
 
 ---
-## 8. Maintenance windows and update process
+## 9. Maintenance windows and update process
 - Pull images in staging first: `docker compose -f docker-compose.yml pull`
 - Stop critical services if needed, update, validate, then restart.
 - Keep Watchtower but test updates in staging before promoting to production.
 
 ---
-## 9. Troubleshooting quick commands
+## 10. Troubleshooting quick commands
 ```bash
 # Container logs
 sudo docker logs n8n --tail 200
