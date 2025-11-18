@@ -2,9 +2,8 @@ FROM n8nio/n8n:latest
 
 USER root
 
-# Install ImageMagick, Python3, and required dependencies
+# Install Python3 and Pillow for image composition
 RUN apk add --no-cache \
-    imagemagick \
     python3 \
     py3-pip \
     py3-pillow \

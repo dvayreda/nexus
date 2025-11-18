@@ -44,15 +44,16 @@ Nexus is a self-contained automation workstation running on Raspberry Pi 4 desig
 
 **Services (Docker Compose stack):**
 - **PostgreSQL**: Primary database for n8n and event tracking
-- **n8n**: Workflow automation orchestrator (port 5678) - Custom image with ImageMagick installed
+- **n8n**: Workflow automation orchestrator (port 5678) - Custom image with Python3 + Pillow
 - **code-server**: Web-based IDE (port 8080)
 - **Netdata**: System monitoring dashboard (port 19999)
 - **Watchtower**: Automatic container updates
 
 **Custom Docker Images:**
-- **n8n**: Built from `/srv/docker/n8n.Dockerfile` extending `n8nio/n8n:latest` with ImageMagick 7.1.2-8
-  - Supports image manipulation: JPEG, PNG, WEBP, TIFF, HEIC, SVG/RSVG
-  - ImageMagick commands available: `convert`, `magick`, `identify`, `composite`, etc.
+- **n8n**: Built from `/srv/docker/n8n.Dockerfile` extending `n8nio/n8n:latest`
+  - Python 3.12.12 + Pillow 11.2.1 for image composition
+  - Supports image manipulation: JPEG, PNG, WEBP, TIFF with high-quality resampling
+  - PIL/Pillow for text rendering with custom fonts
 
 **Key Directories:**
 - `/srv/docker` - Docker Compose stack and custom Dockerfiles
@@ -87,8 +88,9 @@ sudo docker compose down
 cd /srv/docker && sudo docker compose build n8n
 cd /srv/docker && sudo docker compose up -d n8n
 
-# Verify ImageMagick in n8n container
-sudo docker exec nexus-n8n convert -version
+# Verify Python and Pillow in n8n container
+sudo docker exec nexus-n8n python3 --version
+sudo docker exec nexus-n8n python3 -c "import PIL; print(f'Pillow {PIL.__version__}')"
 ```
 
 ### Backup Operations
@@ -144,9 +146,10 @@ python tests/test_render.py
 ## Data Flow Architecture
 
 1. **Content Generation**: n8n scheduled triggers call AI APIs to generate text content
-2. **Asset Fetching**: Pexels API provides candidate images based on content theme
-3. **Rendering**: Python/ImageMagick/FFmpeg scripts render 5-slide carousels or short videos
-   - ImageMagick available in n8n container for image composition and manipulation
+2. **Image Generation**: Gemini AI generates custom images for carousel slides 1-4
+3. **Rendering**: Python + Pillow scripts composite images onto Figma templates with text overlays
+   - Smart aspect ratio preservation with center-crop
+   - High-quality font rendering (180pt title, 85pt subtitle)
 4. **Review Gate**: Telegram manual review step (human-in-the-loop approval)
 5. **Publishing**: n8n uploads approved content to platform APIs (Instagram/X/TikTok/YouTube)
 6. **Tracking**: Post metadata stored in PostgreSQL events table for analytics

@@ -11,8 +11,7 @@
 - **n8n** (Self-hosted on RPi in Docker)
   - Groq LLM (Fact generation)
   - Google Gemini (Content + Image generation)
-- **ImageMagick 7.1.2** (Image manipulation - installed in Docker)
-- **Python 3** (PIL/Pillow - Final image composition)
+- **Python 3.12** + **Pillow 11.2** (Image composition and text rendering)
 - **Figma** (Template design - 2x resolution: 2160x2700px)
 - **Docker** (Container for n8n with custom Dockerfile)
 
@@ -189,9 +188,8 @@ Ensures all carousel data + file path flows to composite script.
 ### Docker Setup
 ```
 /srv/docker/
-├── n8n.Dockerfile (Custom Dockerfile with ImageMagick)
-├── docker-compose.yml
-└── docker-compose.yml.backup-imagemagick
+├── n8n.Dockerfile (Custom Dockerfile with Python3 + Pillow)
+└── docker-compose.yml
 ```
 
 ### Container Paths (Inside n8n Docker)
@@ -257,23 +255,20 @@ Ensures all carousel data + file path flows to composite script.
    - Subtitle Y-position: 1840px
    - Using PIL anchor='mm' for perfect centering
 
-### ImageMagick Installation in Docker
+### Python & Pillow in Docker
 Custom Dockerfile:
 ```dockerfile
-FROM n8n/n8n:latest
-RUN apt-get update && apt-get install -y imagemagick
+FROM n8nio/n8n:latest
+USER root
+RUN apk add --no-cache python3 py3-pip py3-pillow jpeg-dev zlib-dev freetype-dev
+USER node
 ```
 
 Rebuild container:
 ```bash
-docker-compose build
-docker-compose up -d
-```
-
-### Python in Docker
-Python 3 pre-installed in n8n image. PIL/Pillow installed via:
-```bash
-docker exec <container_id> apt-get install -y python3-pil
+cd /srv/docker
+docker compose build n8n
+docker compose up -d n8n
 ```
 
 ---
@@ -307,15 +302,15 @@ Science | Psychology | Technology | History | Space
 1. **Separating image generation from composition** - Gemini for creativity, Python for precision
 2. **Using Figma templates at 2x resolution** - Cleaner output, easier font sizing
 3. **Explicit brand guidelines in LLM prompts** - Consistent output quality
-4. **PIL/Pillow for final composition** - Way more reliable than ImageMagick + shell
+4. **Python + Pillow for image composition** - Reliable, maintainable, proper aspect ratio handling
 5. **Docker volume mounts (/data/*)** - Persistent, accessible from host via Samba, survives restarts
 
 ### ❌ What Didn't Work
-1. ImageMagick shell commands - Too finicky with quoting, escaping, positioning
-2. n8n Code Node for file operations - Sandbox restrictions (no fs module)
-3. Complex shell scripts with conditionals - Escaping nightmares
-4. Using /tmp/ without volume mounts - Files lost on container restart, not accessible from host
-5. Read/Write Files node for parsing binary - Only works with proper "data" field configuration
+1. **ImageMagick approach** - Shell command escaping issues, inconsistent results (removed in favor of Python)
+2. **n8n Code Node for file operations** - Sandbox restrictions (no fs module)
+3. **Complex shell scripts with conditionals** - Escaping nightmares
+4. **Using /tmp/ without volume mounts** - Files lost on container restart, not accessible from host
+5. **Direct resize without aspect ratio** - Caused image distortion (fixed with smart crop/scale)
 
 ### ⚠️ Important Gotchas
 1. **Docker container filesystem is isolated** - Use volume mounts (/data/*) for persistent access
@@ -410,9 +405,9 @@ Science | Psychology | Technology | History | Space
 ## Contact & Notes
 
 - **Docker Container ID:** Check with `docker ps | grep n8n`
-- **n8n Access:** http://localhost:5678
-- **Python Version:** 3.x
-- **ImageMagick:** v7.1.2-8 (installed but no longer used)
+- **n8n Access:** http://localhost:5678 or http://100.122.207.23:5678
+- **Python Version:** 3.12.12
+- **Pillow Version:** 11.2.1
 
 ---
 
