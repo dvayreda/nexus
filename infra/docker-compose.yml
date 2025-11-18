@@ -51,7 +51,12 @@ services:
       N8N_BASIC_AUTH_USER: ${N8N_USER}
       N8N_BASIC_AUTH_PASSWORD: ${N8N_PASSWORD}
       N8N_SECURE_COOKIE: "false"
-      
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"  # Allow env var access in Code nodes (needed for API keys)
+      N8N_GIT_NODE_DISABLE_BARE_REPOS: "true"  # Disable bare repos for security
+
+      # Task Runners (future-proofing)
+      N8N_RUNNERS_ENABLED: "true"
+
       # Webhook URL (explicitly set for OAuth callbacks)
       WEBHOOK_URL: http://100.122.207.23:5678
       N8N_BASE_URL: http://100.122.207.23:5678
