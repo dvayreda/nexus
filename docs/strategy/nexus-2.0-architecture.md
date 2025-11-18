@@ -898,4 +898,1352 @@ The following sections will deep-dive into:
 
 ---
 
-*Document continues in next section...*
+## SECTION 3: RECOMMENDED ARCHITECTURE - HYBRID PI + CLOUD (DETAILED IMPLEMENTATION)
+
+**Decision:** We're proceeding with **Option B (Hybrid Pi + Cloud)** for the following strategic reasons:
+- ✅ **Pragmatic:** Leverages existing Pi investment while gaining cloud benefits
+- ✅ **Incremental:** Migrate workloads one at a time, low risk
+- ✅ **Cost-Effective:** $85-130/month vs $371+ for full cloud
+- ✅ **Scalable:** Can grow from 3 posts/day to 500+ posts/day
+- ✅ **Reversible:** Can roll back to Pi-only or migrate fully to cloud later
+
+This section provides a complete technical blueprint for implementation.
+
+---
+
+### 3.1 System Architecture Diagram (Detailed)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ USER INTERFACE LAYER                                                        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  [Telegram Bot]  ←─→  [n8n Webhooks]  ←─→  [Admin Dashboard (Future)]    │
+│  • Manual approve               • HTTP endpoints           • Web UI        │
+│  • View previews                • Trigger workflows        • Brand mgmt    │
+│  • Schedule posts               • Status updates           • Analytics     │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    ↕
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ ON-PREMISES: RASPBERRY PI 4 (Orchestration Hub)                            │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌────────────────────────────────────────────────────────────────────┐   │
+│  │ n8n (Workflow Orchestration) - Port 5678                          │   │
+│  │ ─────────────────────────────────────────────────────────────────  │   │
+│  │ • Cron triggers (daily at 9 AM, 3 PM, 9 PM)                      │   │
+│  │ • Webhook receivers (manual triggers, approvals)                  │   │
+│  │ • HTTP request nodes (call cloud functions)                       │   │
+│  │ • Conditional logic (quality checks, retries)                     │   │
+│  │ • State management (track workflow progress)                      │   │
+│  │ Resource: ~500MB RAM, 0.5 CPU core                               │   │
+│  └────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│  ┌────────────────────────────────────────────────────────────────────┐   │
+│  │ PostgreSQL 15 (Metadata Store) - Port 5432                        │   │
+│  │ ─────────────────────────────────────────────────────────────────  │   │
+│  │ • Workflow execution history (n8n)                                │   │
+│  │ • Carousel metadata (titles, captions, hashtags)                  │   │
+│  │ • Brand configurations (FactsMind settings)                       │   │
+│  │ • Publishing schedule and status                                  │   │
+│  │ • Asset URLs (references to S3 objects)                           │   │
+│  │ Size: ~2GB database, growing ~100MB/month                        │   │
+│  │ Resource: ~300MB RAM, 0.2 CPU core                               │   │
+│  └────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│  ┌────────────────────────────────────────────────────────────────────┐   │
+│  │ Redis 7 (Cache + Queue) - Port 6379                               │   │
+│  │ ─────────────────────────────────────────────────────────────────  │   │
+│  │ • Job queue for cloud function invocations                        │   │
+│  │ • Response caching (Groq/Gemini API responses)                    │   │
+│  │ • Rate limiting (API quotas)                                      │   │
+│  │ • Session storage (Telegram bot state)                            │   │
+│  │ Resource: ~150MB RAM, 0.1 CPU core                               │   │
+│  └────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│  ┌────────────────────────────────────────────────────────────────────┐   │
+│  │ Nginx (Reverse Proxy) - Port 80/443                               │   │
+│  │ ─────────────────────────────────────────────────────────────────  │   │
+│  │ • SSL termination (Let's Encrypt certs)                           │   │
+│  │ • Load balancing (future: multiple n8n instances)                 │   │
+│  │ • Access logs for audit trail                                     │   │
+│  │ Resource: ~50MB RAM, 0.1 CPU core                                │   │
+│  └────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│  Total Pi Resource Usage: ~1GB RAM, 1 CPU core (25% capacity)             │
+│  Remaining: 3GB RAM, 3 CPU cores for future expansion                     │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    ↕
+                        [SECURE VPN: Tailscale Mesh Network]
+                        • Zero-trust networking
+                        • Pi accessible from anywhere
+                        • End-to-end encryption
+                                    ↕
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ CLOUD LAYER: AWS / Cloudflare (Compute + Storage)                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────┐      │
+│  │ COMPUTE: Serverless Functions (AWS Lambda)                      │      │
+│  │ ──────────────────────────────────────────────────────────────  │      │
+│  │                                                                  │      │
+│  │  Function 1: image-compositor                                   │      │
+│  │  ├─ Runtime: Python 3.11 + Lambda Layer (Pillow, fonts)        │      │
+│  │  ├─ Memory: 2048MB, Timeout: 30s                                │      │
+│  │  ├─ Trigger: HTTP API (from n8n)                                │      │
+│  │  ├─ Input: Slide data + generated image URL                     │      │
+│  │  └─ Output: Composited slide uploaded to S3                     │      │
+│  │                                                                  │      │
+│  │  Function 2: video-renderer (Future)                            │      │
+│  │  ├─ Runtime: Python 3.11 + FFmpeg layer                         │      │
+│  │  ├─ Memory: 3008MB, Timeout: 120s                               │      │
+│  │  ├─ Trigger: HTTP API (from n8n)                                │      │
+│  │  └─ Output: MP4 video for YouTube Shorts                        │      │
+│  │                                                                  │      │
+│  │  Concurrency: 10 (can handle 10 carousels simultaneously)       │      │
+│  │  Scaling: Auto-scale to 1000 concurrent (AWS limit)             │      │
+│  └─────────────────────────────────────────────────────────────────┘      │
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────┐      │
+│  │ STORAGE: S3 (or Cloudflare R2)                                  │      │
+│  │ ──────────────────────────────────────────────────────────────  │      │
+│  │                                                                  │      │
+│  │  Bucket 1: nexus-templates                                      │      │
+│  │  ├─ Purpose: Carousel templates (PSD exports)                   │      │
+│  │  ├─ Access: Public read, Lambda write                           │      │
+│  │  ├─ Size: ~100MB (5 templates × 20MB each)                     │      │
+│  │  └─ Lifecycle: Never expire                                     │      │
+│  │                                                                  │      │
+│  │  Bucket 2: nexus-generated-images                               │      │
+│  │  ├─ Purpose: Raw images from Gemini API                         │      │
+│  │  ├─ Access: Private (Lambda only)                               │      │
+│  │  ├─ Size: ~20GB (10,000 images × 2MB)                          │      │
+│  │  └─ Lifecycle: Delete after 90 days                             │      │
+│  │                                                                  │      │
+│  │  Bucket 3: nexus-final-carousels                                │      │
+│  │  ├─ Purpose: Final composited carousels                         │      │
+│  │  ├─ Access: Public read (CDN-backed)                            │      │
+│  │  ├─ Size: ~50GB (10,000 carousels × 5MB)                       │      │
+│  │  └─ Lifecycle: Keep indefinitely (archive to Glacier >1yr)     │      │
+│  │                                                                  │      │
+│  │  CDN: CloudFront (or R2 with Cloudflare CDN)                    │      │
+│  │  ├─ Cache TTL: 7 days                                           │      │
+│  │  ├─ Edge locations: Global (50+ POPs)                           │      │
+│  │  └─ Custom domain: cdn.nexus.yourdomain.com                     │      │
+│  └─────────────────────────────────────────────────────────────────┘      │
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────┐      │
+│  │ AI SERVICES (3rd Party APIs)                                    │      │
+│  │ ──────────────────────────────────────────────────────────────  │      │
+│  │  • Groq Cloud (Llama 3.1 70B) - Fact generation                │      │
+│  │  • Google Gemini 1.5 Pro - Content expansion                    │      │
+│  │  • Google Imagen 3 - Image generation                           │      │
+│  │  • Instagram Graph API - Publishing                             │      │
+│  │  Called from: n8n (Pi) via HTTP requests                        │      │
+│  └─────────────────────────────────────────────────────────────────┘      │
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────┐      │
+│  │ MONITORING & OBSERVABILITY                                      │      │
+│  │ ──────────────────────────────────────────────────────────────  │      │
+│  │  • BetterStack - Uptime monitoring (Pi + Lambda)                │      │
+│  │  • CloudWatch - Lambda logs + metrics                           │      │
+│  │  • Sentry (Future) - Error tracking                             │      │
+│  │  • Grafana Cloud (Future) - Centralized dashboards              │      │
+│  └─────────────────────────────────────────────────────────────────┘      │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    ↕
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ EXTERNAL PLATFORMS (Publishing Destinations)                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  [Instagram]  [YouTube]  [TikTok]  [Twitter/X]  [LinkedIn]  [Blog]       │
+│  • Carousels  • Shorts   • Videos  • Threads    • Posts     • Articles    │
+│  • Graph API  • Data API • TikTok  • API v2     • API       • Webhook     │
+│                         API                                                │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 3.2 Component Breakdown
+
+#### 3.2.1 Raspberry Pi (Orchestration Hub)
+
+**Role:** Central control plane for workflow management, scheduling, and coordination.
+
+**Components:**
+
+**n8n Workflow Engine**
+- **Purpose:** Visual workflow orchestration, replaces manual scripting
+- **Version:** n8n 1.14.0 (self-hosted)
+- **Configuration:**
+  ```yaml
+  # docker-compose.yml (n8n service)
+  n8n:
+    image: n8nio/n8n:1.14.0
+    container_name: nexus-n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=nexus.home.local
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      - NODE_ENV=production
+      - EXECUTIONS_DATA_PRUNE=true
+      - EXECUTIONS_DATA_MAX_AGE=168  # Keep 7 days
+      - WEBHOOK_URL=https://nexus.yourdomain.com
+      - GENERIC_TIMEZONE=America/Los_Angeles
+      - N8N_METRICS=true  # Prometheus metrics
+    volumes:
+      - /home/user/nexus/n8n-data:/home/node/.n8n
+    networks:
+      - nexus-network
+    depends_on:
+      - postgres
+      - redis
+  ```
+
+**PostgreSQL Database**
+- **Purpose:** Persistent storage for workflow state, carousel metadata, brand configs
+- **Version:** PostgreSQL 15.3
+- **Optimizations:**
+  ```sql
+  -- Performance tuning for Pi
+  ALTER SYSTEM SET shared_buffers = '256MB';
+  ALTER SYSTEM SET effective_cache_size = '1GB';
+  ALTER SYSTEM SET maintenance_work_mem = '128MB';
+  ALTER SYSTEM SET checkpoint_completion_target = 0.9;
+  ALTER SYSTEM SET wal_buffers = '16MB';
+  ALTER SYSTEM SET default_statistics_target = 100;
+  ALTER SYSTEM SET random_page_cost = 1.1;
+  ALTER SYSTEM SET effective_io_concurrency = 200;
+
+  -- Indexes for n8n
+  CREATE INDEX idx_execution_data_created ON public.execution_entity(created_at);
+  CREATE INDEX idx_workflow_entity_active ON public.workflow_entity(active);
+
+  -- Custom tables for Nexus
+  CREATE TABLE nexus_carousels (
+      id SERIAL PRIMARY KEY,
+      brand VARCHAR(50) NOT NULL,
+      workflow_id VARCHAR(100) NOT NULL,
+      fact_text TEXT NOT NULL,
+      slides JSONB NOT NULL,
+      asset_urls TEXT[],
+      status VARCHAR(20) NOT NULL,  -- generating, ready, approved, published, failed
+      telegram_message_id INTEGER,
+      instagram_post_id VARCHAR(100),
+      created_at TIMESTAMP DEFAULT NOW(),
+      published_at TIMESTAMP
+  );
+
+  CREATE INDEX idx_carousels_status ON nexus_carousels(status, created_at);
+  CREATE INDEX idx_carousels_brand ON nexus_carousels(brand, created_at);
+  ```
+
+**Redis Cache**
+- **Purpose:** Job queuing, API response caching, rate limiting
+- **Version:** Redis 7.2
+- **Configuration:**
+  ```conf
+  # redis.conf
+  maxmemory 512mb
+  maxmemory-policy allkeys-lru
+  save 900 1
+  save 300 10
+  save 60 10000
+  appendonly yes
+  appendfsync everysec
+  ```
+
+**Nginx Reverse Proxy**
+- **Purpose:** SSL termination, external access, future load balancing
+- **Configuration:**
+  ```nginx
+  # /etc/nginx/sites-available/nexus
+  server {
+      listen 443 ssl http2;
+      server_name nexus.yourdomain.com;
+
+      ssl_certificate /etc/letsencrypt/live/nexus.yourdomain.com/fullchain.pem;
+      ssl_certificate_key /etc/letsencrypt/live/nexus.yourdomain.com/privkey.pem;
+
+      location / {
+          proxy_pass http://localhost:5678;
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+
+          # WebSocket support for n8n live updates
+          proxy_http_version 1.1;
+          proxy_set_header Upgrade $http_upgrade;
+          proxy_set_header Connection "upgrade";
+      }
+
+      # Health check endpoint
+      location /healthz {
+          access_log off;
+          return 200 "OK\n";
+          add_header Content-Type text/plain;
+      }
+  }
+  ```
+
+#### 3.2.2 AWS Lambda (Compute Layer)
+
+**Role:** Serverless execution of compute-intensive tasks (image composition, video rendering).
+
+**Function: image-compositor**
+
+```python
+# lambda_functions/image_compositor/handler.py
+import json
+import boto3
+import requests
+from PIL import Image, ImageDraw, ImageFont
+from io import BytesIO
+import os
+
+s3_client = boto3.client('s3')
+
+TEMPLATES_BUCKET = os.environ['TEMPLATES_BUCKET']
+OUTPUT_BUCKET = os.environ['OUTPUT_BUCKET']
+FONT_PATH = '/opt/fonts/Montserrat-Bold.ttf'  # Lambda layer
+
+def lambda_handler(event, context):
+    """
+    Composite a carousel slide from template + generated image.
+
+    Input event:
+    {
+        "carousel_id": "uuid",
+        "slide_num": 1,
+        "slide_type": "hook",
+        "title": "Amazing Fact!",
+        "subtitle": "You won't believe this",
+        "image_url": "https://storage.googleapis.com/...",
+        "brand": "FactsMind"
+    }
+
+    Output:
+    {
+        "statusCode": 200,
+        "body": {
+            "output_url": "https://cdn.nexus.com/carousels/{carousel_id}/slide_1.png",
+            "processing_time_ms": 1234
+        }
+    }
+    """
+
+    import time
+    start_time = time.time()
+
+    try:
+        # Parse input
+        carousel_id = event['carousel_id']
+        slide_num = event['slide_num']
+        slide_type = event['slide_type']
+        title = event['title']
+        subtitle = event.get('subtitle', '')
+        image_url = event.get('image_url')
+        brand = event.get('brand', 'default')
+
+        # Download template from S3
+        template_key = f"{brand}/templates/template_{slide_type}.png"
+        template_obj = s3_client.get_object(Bucket=TEMPLATES_BUCKET, Key=template_key)
+        template_img = Image.open(BytesIO(template_obj['Body'].read()))
+
+        # Download generated image (if applicable)
+        if image_url and slide_num <= 4:  # First 4 slides have images
+            response = requests.get(image_url, timeout=10)
+            generated_img = Image.open(BytesIO(response.content))
+
+            # Resize to fit template (1080×1350, image area is 1080×900)
+            generated_img = generated_img.resize((1080, 900), Image.Resampling.LANCZOS)
+
+            # Paste onto template (image area starts at y=0)
+            template_img.paste(generated_img, (0, 0))
+
+        # Add text overlay
+        draw = ImageDraw.Draw(template_img)
+
+        # Title text (large, bold)
+        title_font = ImageFont.truetype(FONT_PATH, 72)
+        title_bbox = draw.textbbox((0, 0), title, font=title_font)
+        title_width = title_bbox[2] - title_bbox[0]
+        title_x = (1080 - title_width) // 2
+        title_y = 950 if image_url else 450
+
+        # Text shadow for readability
+        draw.text((title_x + 3, title_y + 3), title, fill='#000000', font=title_font)
+        draw.text((title_x, title_y), title, fill='#FFFFFF', font=title_font)
+
+        # Subtitle text (smaller)
+        if subtitle:
+            subtitle_font = ImageFont.truetype(FONT_PATH, 48)
+            subtitle_bbox = draw.textbbox((0, 0), subtitle, font=subtitle_font)
+            subtitle_width = subtitle_bbox[2] - subtitle_bbox[0]
+            subtitle_x = (1080 - subtitle_width) // 2
+            subtitle_y = title_y + 100
+
+            draw.text((subtitle_x + 2, subtitle_y + 2), subtitle, fill='#000000', font=subtitle_font)
+            draw.text((subtitle_x, subtitle_y), subtitle, fill='#CCCCCC', font=subtitle_font)
+
+        # Save to buffer
+        output_buffer = BytesIO()
+        template_img.save(output_buffer, format='PNG', optimize=True)
+        output_buffer.seek(0)
+
+        # Upload to S3
+        output_key = f"carousels/{carousel_id}/slide_{slide_num}.png"
+        s3_client.put_object(
+            Bucket=OUTPUT_BUCKET,
+            Key=output_key,
+            Body=output_buffer,
+            ContentType='image/png',
+            CacheControl='public, max-age=604800'  # 7 days
+        )
+
+        # Generate CDN URL
+        cdn_url = f"https://cdn.nexus.com/{output_key}"
+
+        processing_time = int((time.time() - start_time) * 1000)
+
+        return {
+            'statusCode': 200,
+            'body': json.dumps({
+                'output_url': cdn_url,
+                'processing_time_ms': processing_time,
+                'slide_num': slide_num
+            })
+        }
+
+    except Exception as e:
+        print(f"Error processing slide: {str(e)}")
+        return {
+            'statusCode': 500,
+            'body': json.dumps({
+                'error': str(e),
+                'carousel_id': carousel_id,
+                'slide_num': slide_num
+            })
+        }
+```
+
+**Lambda Deployment Configuration:**
+
+```yaml
+# serverless.yml (using Serverless Framework)
+service: nexus-lambda
+
+provider:
+  name: aws
+  runtime: python3.11
+  region: us-west-2
+  memorySize: 2048
+  timeout: 30
+  environment:
+    TEMPLATES_BUCKET: nexus-templates
+    OUTPUT_BUCKET: nexus-final-carousels
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - s3:GetObject
+            - s3:PutObject
+          Resource:
+            - arn:aws:s3:::nexus-templates/*
+            - arn:aws:s3:::nexus-final-carousels/*
+
+functions:
+  image-compositor:
+    handler: handler.lambda_handler
+    layers:
+      - arn:aws:lambda:us-west-2:123456789:layer:pillow-fonts:1
+    events:
+      - http:
+          path: /composite
+          method: post
+          cors: true
+    reservedConcurrency: 10  # Limit to 10 concurrent executions
+
+layers:
+  pillow-fonts:
+    path: layers/pillow-fonts
+    description: Pillow + custom fonts
+    compatibleRuntimes:
+      - python3.11
+
+plugins:
+  - serverless-python-requirements
+
+custom:
+  pythonRequirements:
+    dockerizePip: true
+    layer: true
+```
+
+**Lambda Layer Contents:**
+
+```bash
+# layers/pillow-fonts/
+├── python/
+│   └── lib/
+│       └── python3.11/
+│           └── site-packages/
+│               └── PIL/  # Pillow library
+└── fonts/
+    ├── Montserrat-Bold.ttf
+    ├── Montserrat-Regular.ttf
+    └── Roboto-Bold.ttf
+
+# Build layer
+cd layers/pillow-fonts
+pip install Pillow -t python/lib/python3.11/site-packages/
+zip -r pillow-fonts.zip python/ fonts/
+aws lambda publish-layer-version \
+  --layer-name pillow-fonts \
+  --zip-file fileb://pillow-fonts.zip \
+  --compatible-runtimes python3.11
+```
+
+#### 3.2.3 S3 Storage (Asset Layer)
+
+**Bucket Structure:**
+
+```
+nexus-templates/
+├── FactsMind/
+│   └── templates/
+│       ├── template_hook.png       # Slide 1: Eye-catching hook
+│       ├── template_problem.png    # Slide 2: Problem statement
+│       ├── template_explanation.png # Slide 3: Core content
+│       ├── template_example.png    # Slide 4: Example/visual
+│       └── template_cta.png        # Slide 5: Call to action
+└── TechDaily/  # Future brand
+    └── templates/
+        └── ...
+
+nexus-generated-images/
+├── 2025/
+│   └── 11/
+│       ├── 18/
+│       │   ├── carousel-uuid-1-image-1.png
+│       │   ├── carousel-uuid-1-image-2.png
+│       │   └── ...
+│       └── 19/
+└── ...
+
+nexus-final-carousels/
+├── FactsMind/
+│   ├── 2025/
+│   │   └── 11/
+│   │       ├── carousel-uuid-1/
+│   │       │   ├── slide_1.png
+│   │       │   ├── slide_2.png
+│   │       │   ├── slide_3.png
+│   │       │   ├── slide_4.png
+│   │       │   └── slide_5.png
+│   │       └── carousel-uuid-2/
+│   │           └── ...
+└── ...
+```
+
+**S3 Bucket Policies:**
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "PublicReadFinalCarousels",
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::nexus-final-carousels/*"
+    },
+    {
+      "Sid": "LambdaWriteAccess",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::123456789:role/nexus-lambda-execution-role"
+      },
+      "Action": [
+        "s3:PutObject",
+        "s3:GetObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::nexus-templates/*",
+        "arn:aws:s3:::nexus-generated-images/*",
+        "arn:aws:s3:::nexus-final-carousels/*"
+      ]
+    }
+  ]
+}
+```
+
+**CloudFront CDN Configuration:**
+
+```json
+{
+  "OriginGroups": [],
+  "Origins": [
+    {
+      "Id": "S3-nexus-final-carousels",
+      "DomainName": "nexus-final-carousels.s3.us-west-2.amazonaws.com",
+      "S3OriginConfig": {
+        "OriginAccessIdentity": ""
+      }
+    }
+  ],
+  "DefaultCacheBehavior": {
+    "TargetOriginId": "S3-nexus-final-carousels",
+    "ViewerProtocolPolicy": "redirect-to-https",
+    "AllowedMethods": ["GET", "HEAD", "OPTIONS"],
+    "CachedMethods": ["GET", "HEAD"],
+    "Compress": true,
+    "DefaultTTL": 604800,
+    "MaxTTL": 31536000,
+    "MinTTL": 0
+  },
+  "PriceClass": "PriceClass_100",
+  "ViewerCertificate": {
+    "ACMCertificateArn": "arn:aws:acm:us-east-1:123456789:certificate/...",
+    "SSLSupportMethod": "sni-only",
+    "MinimumProtocolVersion": "TLSv1.2_2021"
+  },
+  "CustomDomain": "cdn.nexus.yourdomain.com"
+}
+```
+
+---
+
+### 3.3 Data Flow: Carousel Generation (Step-by-Step)
+
+**End-to-End Flow: From Trigger to Published Post**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ PHASE 1: TRIGGER & INITIALIZATION (t=0s)                       │
+└─────────────────────────────────────────────────────────────────┘
+
+1. Cron trigger fires (e.g., 9:00 AM daily)
+   ├─ n8n workflow: "Daily Carousel Generator" starts
+   ├─ Read brand config from PostgreSQL:
+   │  SELECT * FROM nexus_brands WHERE active=true AND name='FactsMind';
+   ├─ Generate carousel_id: uuid.v4() → "a1b2c3d4-e5f6-..."
+   └─ Log workflow start to database
+
+2. Select topic for the day
+   ├─ n8n Function node: selectTopic()
+   ├─ Logic: Round-robin through topic list
+   ├─ Topics: ["space", "history", "technology", "nature", "psychology"]
+   └─ Output: topic="space"
+
+┌─────────────────────────────────────────────────────────────────┐
+│ PHASE 2: CONTENT GENERATION (t=0s → t=15s)                     │
+└─────────────────────────────────────────────────────────────────┘
+
+3. Generate fact using Groq API (t=0s → t=3s)
+   ├─ n8n HTTP Request node: POST to Groq Cloud
+   ├─ Model: llama-3.1-70b-versatile
+   ├─ Prompt: "Generate a fascinating fact about {topic} that would make a great Instagram carousel..."
+   ├─ Response (3s): "The Great Red Spot on Jupiter has been raging for over 300 years..."
+   └─ Cache in Redis: SET "fact:{hash}" "{fact}" EX 86400
+
+4. Expand fact into 5-slide carousel (t=3s → t=10s)
+   ├─ n8n HTTP Request node: POST to Gemini API
+   ├─ Model: gemini-1.5-pro-latest
+   ├─ Prompt: "Expand this fact into a 5-slide Instagram carousel structure..."
+   ├─ Response (7s): JSON with 5 slides
+   │  {
+   │    "slides": [
+   │      {"type": "hook", "title": "Jupiter's Eternal Storm", "subtitle": "300 Years and Counting", ...},
+   │      {"type": "problem", "title": "How Is This Possible?", ...},
+   │      {"type": "explanation", "title": "Jupiter's Atmosphere", ...},
+   │      {"type": "example", "title": "Size Comparison", ...},
+   │      {"type": "cta", "title": "Follow for More Space Facts", ...}
+   │    ]
+   │  }
+   └─ Store in PostgreSQL: INSERT INTO nexus_carousels (...)
+
+5. Generate images for slides 1-4 (t=10s → t=15s, parallel)
+   ├─ n8n Loop over slides 1-4
+   ├─ For each slide: HTTP Request to Gemini Imagen API (parallel)
+   │  ├─ Prompt: slides[i].image_prompt
+   │  ├─ Model: imagen-3.0-generate-001
+   │  └─ Response: image_url (Google Cloud Storage URL)
+   ├─ Parallelization: 4 requests execute simultaneously
+   ├─ Processing time: 5s each, 5s total (not 20s sequential)
+   └─ Output: [image_url_1, image_url_2, image_url_3, image_url_4]
+
+┌─────────────────────────────────────────────────────────────────┐
+│ PHASE 3: IMAGE COMPOSITION (t=15s → t=20s)                     │
+└─────────────────────────────────────────────────────────────────┘
+
+6. Invoke Lambda functions for composition (parallel)
+   ├─ n8n Loop over all 5 slides
+   ├─ For each slide: HTTP Request to AWS Lambda
+   │  POST https://your-lambda-url.amazonaws.com/composite
+   │  {
+   │    "carousel_id": "a1b2c3d4-e5f6-...",
+   │    "slide_num": i,
+   │    "slide_type": slides[i].type,
+   │    "title": slides[i].title,
+   │    "subtitle": slides[i].subtitle,
+   │    "image_url": image_urls[i],  # or null for slide 5
+   │    "brand": "FactsMind"
+   │  }
+   │
+   │  Lambda executes (per slide):
+   │  ├─ Download template from S3 (200ms)
+   │  ├─ Download generated image (300ms)
+   │  ├─ Composite with Pillow (500ms)
+   │  ├─ Upload to S3 (200ms)
+   │  └─ Return CDN URL (1.2s total per slide)
+   │
+   ├─ Parallelization: All 5 slides process simultaneously
+   ├─ Processing time: 1.2s (not 6s sequential)
+   └─ Output: [cdn_url_1, cdn_url_2, cdn_url_3, cdn_url_4, cdn_url_5]
+
+7. Update database with final URLs
+   ├─ PostgreSQL UPDATE:
+   │  UPDATE nexus_carousels
+   │  SET asset_urls = $1, status = 'ready'
+   │  WHERE id = $2;
+   └─ Commit transaction
+
+┌─────────────────────────────────────────────────────────────────┐
+│ PHASE 4: HUMAN APPROVAL (t=20s → t=???)                        │
+└─────────────────────────────────────────────────────────────────┘
+
+8. Send preview to Telegram
+   ├─ n8n Telegram node: sendMediaGroup
+   ├─ Message: "New carousel ready for FactsMind! Review and approve:"
+   ├─ Attachments: 5 images from CDN URLs
+   ├─ Inline keyboard: [Approve] [Reject] [Edit]
+   └─ Store telegram_message_id in database
+
+9. Wait for approval (async workflow pause)
+   ├─ n8n Webhook node: /approve/{carousel_id}
+   ├─ Telegram bot callback handler
+   └─ Workflow resumes when webhook receives POST
+
+┌─────────────────────────────────────────────────────────────────┐
+│ PHASE 5: PUBLISHING (t=??? → t=???+5s)                          │
+└─────────────────────────────────────────────────────────────────┘
+
+10. Publish to Instagram
+    ├─ n8n HTTP Request: POST to Instagram Graph API
+    ├─ Endpoint: /me/media
+    ├─ Parameters:
+    │  {
+    │    "image_url": cdn_url_1,  # First slide
+    │    "caption": "{caption}\n\n{hashtags}",
+    │    "children": [cdn_url_2, cdn_url_3, cdn_url_4, cdn_url_5],
+    │    "media_type": "CAROUSEL"
+    │  }
+    ├─ Response: instagram_post_id
+    └─ Update database:
+       UPDATE nexus_carousels
+       SET status='published', instagram_post_id=$1, published_at=NOW()
+       WHERE id=$2;
+
+11. Post-publish actions
+    ├─ Send confirmation to Telegram: "Published! [View Post]"
+    ├─ Update Redis stats: INCR "posts:published:2025-11-18"
+    ├─ Trigger analytics workflow (optional)
+    └─ Archive workflow execution logs
+
+┌─────────────────────────────────────────────────────────────────┐
+│ TOTAL TIME: ~20 seconds (automated) + human approval time      │
+│ - Phase 1: 0s                                                   │
+│ - Phase 2: 15s (AI generation)                                 │
+│ - Phase 3: 5s (Lambda composition, parallel)                   │
+│ - Phase 4: Variable (human in loop)                            │
+│ - Phase 5: 5s (Instagram API)                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 3.4 Technology Stack (Specific Versions & Justifications)
+
+| Layer | Technology | Version | Justification |
+|-------|------------|---------|---------------|
+| **Orchestration** | n8n | 1.14.0 | • Self-hosted, no SaaS costs<br>• Visual workflows (easier to modify)<br>• 400+ integrations<br>• Active development<br>• Better than Zapier/Make for self-hosting |
+| **Database** | PostgreSQL | 15.3 | • JSONB for flexible schema<br>• Row-level security (future multi-tenancy)<br>• Proven on Pi (current stack)<br>• Better than MySQL for JSON workloads |
+| **Cache/Queue** | Redis | 7.2 | • In-memory speed (ms latency)<br>• Pub/sub for real-time updates<br>• Simple key-value for caching<br>• Lower overhead than RabbitMQ |
+| **Reverse Proxy** | Nginx | 1.24 | • Industry standard<br>• Low memory footprint (~10MB)<br>• Better than Caddy for production |
+| **Serverless Compute** | AWS Lambda | Python 3.11 | • Pay-per-use ($0.20/1M requests)<br>• Auto-scaling (0 → 1000 concurrent)<br>• Faster cold start than Python 3.9<br>• Better than Cloud Run (more mature) |
+| **Object Storage** | AWS S3 | N/A | • 99.999999999% durability<br>• $0.023/GB/month<br>• CloudFront integration<br>• Alternative: Cloudflare R2 ($0.015/GB) |
+| **CDN** | CloudFront | N/A | • 410+ edge locations<br>• $0.085/GB bandwidth<br>• Lowest latency globally<br>• Alternative: Cloudflare CDN (cheaper) |
+| **AI - Facts** | Groq | Llama 3.1 70B | • Fastest inference (800 tokens/s)<br>• $0.59/1M tokens<br>• Better quality than GPT-3.5<br>• 10x cheaper than GPT-4 |
+| **AI - Content** | Google Gemini | 1.5 Pro | • 2M token context window<br>• $3.50/1M tokens<br>• Better reasoning than Claude Sonnet<br>• Multimodal (future video) |
+| **AI - Images** | Google Imagen | 3.0 | • Photorealistic quality<br>• $0.02/image<br>• Faster than DALL-E 3 (4s vs 10s)<br>• Better than Stable Diffusion XL |
+| **Social API** | Instagram Graph API | v18.0 | • Official API (stable)<br>• Carousel support<br>• Scheduling (future)<br>• Better than scraping |
+| **Monitoring** | BetterStack | N/A | • Uptime monitoring<br>• $10/month (5 monitors)<br>• SMS/Slack alerts<br>• Alternative: UptimeRobot (free) |
+| **VPN** | Tailscale | Free | • Zero-config VPN<br>• WireGuard protocol<br>• Access Pi from anywhere<br>• Better than OpenVPN setup |
+| **CI/CD (Future)** | GitHub Actions | N/A | • Free for public repos<br>• Docker build + push<br>• Auto-deploy to Pi<br>• Better than Jenkins (simpler) |
+
+---
+
+### 3.5 Implementation Plan (Phased Rollout)
+
+#### Phase 1: Foundation Setup (Week 1)
+
+**Goal:** Prepare infrastructure without disrupting production.
+
+**Tasks:**
+1. **AWS Account Setup**
+   ```bash
+   # Create AWS account
+   # Enable billing alerts ($10/month threshold)
+   # Create IAM user for Lambda deployment
+   aws configure
+   ```
+
+2. **S3 Buckets Creation**
+   ```bash
+   # Create buckets
+   aws s3 mb s3://nexus-templates --region us-west-2
+   aws s3 mb s3://nexus-generated-images --region us-west-2
+   aws s3 mb s3://nexus-final-carousels --region us-west-2
+
+   # Enable versioning (safety)
+   aws s3api put-bucket-versioning \
+     --bucket nexus-final-carousels \
+     --versioning-configuration Status=Enabled
+
+   # Upload existing templates
+   aws s3 sync /home/user/nexus/templates/ s3://nexus-templates/FactsMind/templates/
+   ```
+
+3. **Lambda Function Development**
+   ```bash
+   # Local development
+   cd /home/user/nexus/lambda_functions/image_compositor
+   python -m venv venv
+   source venv/bin/activate
+   pip install Pillow boto3 requests
+
+   # Test locally
+   python test_handler.py
+
+   # Deploy with Serverless Framework
+   npm install -g serverless
+   serverless deploy --region us-west-2
+   ```
+
+4. **n8n Workflow Backup**
+   ```bash
+   # Backup current workflow before changes
+   cp /home/user/nexus/n8n-data/workflows.json \
+      /home/user/nexus/backups/workflows-backup-$(date +%Y%m%d).json
+   ```
+
+**Deliverables:**
+- ✅ AWS infrastructure ready
+- ✅ Lambda function deployed and tested
+- ✅ S3 buckets configured
+- ✅ Current workflow backed up
+
+#### Phase 2: Hybrid Integration (Week 2)
+
+**Goal:** Route image composition to Lambda while keeping everything else on Pi.
+
+**Tasks:**
+1. **Modify n8n Workflow**
+   - Add HTTP Request nodes to call Lambda
+   - Keep Groq/Gemini calls on Pi (no change)
+   - Add error handling + fallback to Pi-based composition
+
+   ```javascript
+   // n8n HTTP Request node: Lambda Invocation
+   {
+     "method": "POST",
+     "url": "{{ $env.LAMBDA_COMPOSITOR_URL }}",
+     "body": {
+       "carousel_id": "{{ $json.carousel_id }}",
+       "slide_num": "{{ $json.slide_num }}",
+       "slide_type": "{{ $json.slide_type }}",
+       "title": "{{ $json.title }}",
+       "subtitle": "{{ $json.subtitle }}",
+       "image_url": "{{ $json.image_url }}",
+       "brand": "FactsMind"
+     },
+     "options": {
+       "timeout": 30000,  // 30s timeout
+       "retry": {
+         "maxTries": 3,
+         "waitBetweenTries": 1000
+       }
+     }
+   }
+
+   // n8n IF node: Check Lambda response
+   // If status != 200, fallback to local composition
+   ```
+
+2. **Parallel Execution Test**
+   - Enable n8n's "Split In Batches" node
+   - Set batch size = 5 (all slides)
+   - Verify 5 Lambda invocations run simultaneously
+
+3. **Database Schema Update**
+   ```sql
+   -- Add columns for cloud metadata
+   ALTER TABLE nexus_carousels
+   ADD COLUMN processing_method VARCHAR(20) DEFAULT 'local',  -- 'local' or 'lambda'
+   ADD COLUMN processing_time_ms INTEGER,
+   ADD COLUMN lambda_invocation_ids TEXT[];
+   ```
+
+**Testing:**
+- Run 3 test carousels end-to-end
+- Verify Lambda invocations in CloudWatch Logs
+- Measure processing time improvement
+- Check S3 uploads successful
+
+**Deliverables:**
+- ✅ Hybrid workflow operational
+- ✅ Performance improvement validated (60s → 20s)
+- ✅ Error handling tested
+- ✅ Monitoring dashboards set up
+
+#### Phase 3: Optimization & Cost Monitoring (Week 3)
+
+**Goal:** Fine-tune for cost efficiency and reliability.
+
+**Tasks:**
+1. **Lambda Optimization**
+   ```python
+   # Add connection pooling for S3
+   from botocore.config import Config
+
+   config = Config(
+       max_pool_connections=50,
+       retries={'max_attempts': 3}
+   )
+   s3_client = boto3.client('s3', config=config)
+
+   # Optimize image processing
+   # - Reduce image quality for faster uploads
+   # - Use WebP format (smaller file size)
+   template_img.save(output_buffer, format='WEBP', quality=85)
+   ```
+
+2. **Cost Monitoring Setup**
+   ```bash
+   # Enable AWS Cost Explorer
+   # Set budget alerts
+   aws budgets create-budget \
+     --account-id 123456789 \
+     --budget file://budget.json
+
+   # budget.json
+   {
+     "BudgetName": "Nexus Monthly Limit",
+     "BudgetLimit": {
+       "Amount": "100",
+       "Unit": "USD"
+     },
+     "TimeUnit": "MONTHLY",
+     "BudgetType": "COST"
+   }
+   ```
+
+3. **CloudFront CDN Setup**
+   ```bash
+   # Create CloudFront distribution
+   aws cloudfront create-distribution \
+     --distribution-config file://cloudfront-config.json
+
+   # Update n8n to use CDN URLs
+   # Before: https://nexus-final-carousels.s3.us-west-2.amazonaws.com/...
+   # After:  https://cdn.nexus.yourdomain.com/...
+   ```
+
+4. **Backup Strategy**
+   ```bash
+   # Automated S3 backups to Glacier (cheap long-term storage)
+   aws s3api put-bucket-lifecycle-configuration \
+     --bucket nexus-final-carousels \
+     --lifecycle-configuration file://lifecycle.json
+
+   # lifecycle.json: Transition to Glacier after 365 days
+   {
+     "Rules": [{
+       "Id": "ArchiveOldCarousels",
+       "Status": "Enabled",
+       "Transitions": [{
+         "Days": 365,
+         "StorageClass": "GLACIER"
+       }]
+     }]
+   }
+   ```
+
+**Deliverables:**
+- ✅ Cost tracking dashboard
+- ✅ Lambda optimized (50% faster)
+- ✅ CDN operational (global <100ms latency)
+- ✅ Automated backups configured
+
+#### Phase 4: Production Cutover (Week 4)
+
+**Goal:** Full production deployment with monitoring.
+
+**Tasks:**
+1. **Production Validation**
+   - Run 10 carousels through hybrid system
+   - Verify Instagram publishing works
+   - Check Telegram notifications
+   - Validate database consistency
+
+2. **Monitoring Setup**
+   ```yaml
+   # docker-compose.yml: Add Prometheus + Grafana (optional)
+   prometheus:
+     image: prom/prometheus:latest
+     volumes:
+       - ./prometheus.yml:/etc/prometheus/prometheus.yml
+     ports:
+       - "9090:9090"
+
+   grafana:
+     image: grafana/grafana:latest
+     ports:
+       - "3000:3000"
+     environment:
+       - GF_SECURITY_ADMIN_PASSWORD=secure_password
+   ```
+
+3. **Documentation Update**
+   ```bash
+   # Update CLAUDE.md with new architecture
+   # Document Lambda deployment process
+   # Create runbook for troubleshooting
+   ```
+
+4. **Rollback Plan**
+   ```bash
+   # If issues arise, quick rollback:
+   # 1. Restore n8n workflow from backup
+   cp /home/user/nexus/backups/workflows-backup-20251118.json \
+      /home/user/nexus/n8n-data/workflows.json
+   docker restart nexus-n8n
+
+   # 2. Disable Lambda invocations (n8n environment variable)
+   echo "ENABLE_LAMBDA=false" >> /home/user/nexus/.env
+   docker restart nexus-n8n
+   ```
+
+**Deliverables:**
+- ✅ Production system stable for 7 days
+- ✅ Documentation complete
+- ✅ Team trained (if applicable)
+- ✅ Rollback plan tested
+
+---
+
+### 3.6 Code Examples: Key Integration Points
+
+#### Example 1: n8n to Lambda Integration (Complete Workflow)
+
+```json
+{
+  "name": "Hybrid Carousel Generator",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{"field": "cronExpression", "expression": "0 9,15,21 * * *"}]
+        }
+      },
+      "name": "Daily Trigger",
+      "type": "n8n-nodes-base.cron",
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [\n  { json: { topic: 'space', carousel_id: $node['Generate UUID'].json.uuid } }\n];"
+      },
+      "name": "Select Topic",
+      "type": "n8n-nodes-base.function",
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {"name": "model", "value": "llama-3.1-70b-versatile"},
+            {"name": "messages", "value": "[{\"role\": \"user\", \"content\": \"Generate fact about {{$json.topic}}\"}]"},
+            {"name": "max_tokens", "value": "500"}
+          ]
+        }
+      },
+      "name": "Groq - Generate Fact",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {"name": "contents", "value": "[{\"parts\": [{\"text\": \"Expand to carousel: {{$json.fact}}\"}]}]"}
+          ]
+        }
+      },
+      "name": "Gemini - Expand to Carousel",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [600, 0]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "name": "Loop Over Slides",
+      "type": "n8n-nodes-base.splitInBatches",
+      "position": [800, 0]
+    },
+    {
+      "parameters": {
+        "url": "https://your-lambda-url.amazonaws.com/composite",
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"carousel_id\": \"{{$json.carousel_id}}\",\n  \"slide_num\": {{$json.slide_num}},\n  \"slide_type\": \"{{$json.slide_type}}\",\n  \"title\": \"{{$json.title}}\",\n  \"subtitle\": \"{{$json.subtitle}}\",\n  \"image_url\": \"{{$json.image_url}}\",\n  \"brand\": \"FactsMind\"\n}",
+        "options": {
+          "timeout": 30000,
+          "retry": {
+            "maxTries": 3,
+            "waitBetweenTries": 1000
+          }
+        }
+      },
+      "name": "Lambda - Composite Slide",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1000, 0]
+    },
+    {
+      "parameters": {
+        "operation": "sendMediaGroup",
+        "chatId": "{{$env.TELEGRAM_CHAT_ID}}",
+        "media": "={{$json.cdn_urls.map(url => ({type: 'photo', media: url}))}}",
+        "additionalFields": {
+          "reply_markup": {
+            "inline_keyboard": [[
+              {"text": "✅ Approve", "callback_data": "approve_{{$json.carousel_id}}"},
+              {"text": "❌ Reject", "callback_data": "reject_{{$json.carousel_id}}"}
+            ]]
+          }
+        }
+      },
+      "name": "Telegram - Send Preview",
+      "type": "n8n-nodes-base.telegram",
+      "position": [1200, 0]
+    }
+  ],
+  "connections": {
+    "Daily Trigger": {"main": [[{"node": "Select Topic", "type": "main", "index": 0}]]},
+    "Select Topic": {"main": [[{"node": "Groq - Generate Fact", "type": "main", "index": 0}]]},
+    "Groq - Generate Fact": {"main": [[{"node": "Gemini - Expand to Carousel", "type": "main", "index": 0}]]},
+    "Gemini - Expand to Carousel": {"main": [[{"node": "Loop Over Slides", "type": "main", "index": 0}]]},
+    "Loop Over Slides": {"main": [[{"node": "Lambda - Composite Slide", "type": "main", "index": 0}]]},
+    "Lambda - Composite Slide": {"main": [[{"node": "Telegram - Send Preview", "type": "main", "index": 0}]]}
+  }
+}
+```
+
+#### Example 2: Pi-Based Fallback (Error Handling)
+
+```python
+# scripts/local_compositor.py (fallback if Lambda fails)
+# This script runs on Pi as backup
+
+import sys
+import json
+from PIL import Image, ImageDraw, ImageFont
+import requests
+from pathlib import Path
+
+def compose_slide_local(slide_data):
+    """Fallback compositor that runs on Pi."""
+    try:
+        # Load template from local filesystem
+        template_path = Path(f"/home/user/nexus/templates/template_{slide_data['slide_type']}.png")
+        template = Image.open(template_path)
+
+        # Download generated image if applicable
+        if slide_data.get('image_url'):
+            response = requests.get(slide_data['image_url'], timeout=10)
+            gen_img = Image.open(BytesIO(response.content))
+            gen_img = gen_img.resize((1080, 900), Image.Resampling.LANCZOS)
+            template.paste(gen_img, (0, 0))
+
+        # Add text overlay (same logic as Lambda)
+        draw = ImageDraw.Draw(template)
+        font = ImageFont.truetype('/home/user/nexus/fonts/Montserrat-Bold.ttf', 72)
+        # ... (text rendering code)
+
+        # Save locally
+        output_path = Path(f"/home/user/nexus/output/slide_{slide_data['slide_num']}.png")
+        template.save(output_path, format='PNG', optimize=True)
+
+        return {
+            'success': True,
+            'output_path': str(output_path),
+            'method': 'local'
+        }
+
+    except Exception as e:
+        return {
+            'success': False,
+            'error': str(e)
+        }
+
+if __name__ == '__main__':
+    slide_data = json.loads(sys.argv[1])
+    result = compose_slide_local(slide_data)
+    print(json.dumps(result))
+```
+
+```javascript
+// n8n Function node: Lambda with Fallback
+const lambdaUrl = 'https://your-lambda-url.amazonaws.com/composite';
+const slideData = {
+  carousel_id: $json.carousel_id,
+  slide_num: $json.slide_num,
+  // ... other fields
+};
+
+try {
+  // Try Lambda first
+  const response = await $http.post(lambdaUrl, slideData, { timeout: 30000 });
+
+  if (response.statusCode === 200) {
+    return [{
+      json: {
+        output_url: response.body.output_url,
+        processing_method: 'lambda',
+        processing_time_ms: response.body.processing_time_ms
+      }
+    }];
+  } else {
+    throw new Error(`Lambda returned ${response.statusCode}`);
+  }
+
+} catch (error) {
+  // Fallback to local Pi-based composition
+  console.log('Lambda failed, falling back to local composition:', error.message);
+
+  const { execSync } = require('child_process');
+  const result = execSync(
+    `python3 /home/user/nexus/scripts/local_compositor.py '${JSON.stringify(slideData)}'`
+  ).toString();
+
+  const localResult = JSON.parse(result);
+
+  if (localResult.success) {
+    return [{
+      json: {
+        output_path: localResult.output_path,
+        processing_method: 'local',
+        processing_time_ms: null
+      }
+    }];
+  } else {
+    throw new Error(`Both Lambda and local composition failed: ${localResult.error}`);
+  }
+}
+```
+
+#### Example 3: PostgreSQL Queries for Hybrid System
+
+```sql
+-- Query: Get carousel processing statistics
+SELECT
+  DATE(created_at) as date,
+  processing_method,
+  COUNT(*) as carousel_count,
+  AVG(processing_time_ms) as avg_time_ms,
+  MIN(processing_time_ms) as min_time_ms,
+  MAX(processing_time_ms) as max_time_ms
+FROM nexus_carousels
+WHERE created_at > NOW() - INTERVAL '30 days'
+GROUP BY DATE(created_at), processing_method
+ORDER BY date DESC, processing_method;
+
+-- Expected output:
+--    date     | processing_method | carousel_count | avg_time_ms | min_time_ms | max_time_ms
+-- -----------|-------------------|----------------|-------------|-------------|-------------
+-- 2025-11-18 | lambda            |             12 |        5234 |        4102 |        6897
+-- 2025-11-18 | local             |              1 |       58392 |       58392 |       58392
+-- 2025-11-17 | lambda            |             15 |        5102 |        4523 |        6234
+
+-- Query: Find carousels that failed Lambda and used fallback
+SELECT
+  id,
+  carousel_id,
+  processing_method,
+  status,
+  created_at
+FROM nexus_carousels
+WHERE processing_method = 'local'
+  AND created_at > NOW() - INTERVAL '7 days'
+ORDER BY created_at DESC;
+
+-- Trigger: Auto-update timestamp
+CREATE OR REPLACE FUNCTION update_modified_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+CREATE TRIGGER update_carousel_modtime
+  BEFORE UPDATE ON nexus_carousels
+  FOR EACH ROW
+  EXECUTE FUNCTION update_modified_column();
+```
+
+---
+
+### 3.7 Expected Performance Improvements
+
+| Metric | Nexus 1.0 (Pi-Only) | Nexus 2.0 (Hybrid) | Improvement |
+|--------|---------------------|-------------------|-------------|
+| **Carousel Generation Time** | 60 seconds | 20 seconds | 3x faster |
+| **Image Composition** | 40s sequential | 5s parallel | 8x faster |
+| **Throughput Capacity** | 3 posts/day | 100 posts/day | 33x more |
+| **Pi CPU Usage** | 80% average | 25% average | 55% reduction |
+| **Pi RAM Usage** | 3.2 GB / 4 GB | 1 GB / 4 GB | 69% reduction |
+| **Cost per Carousel** | $0.50 | $0.45 | 10% cheaper |
+| **Uptime (estimated)** | 95% | 99.5% | 4.5% improvement |
+| **Global Latency** | N/A (local) | <100ms (CDN) | New capability |
+
+**Break-Even Analysis:**
+- Hybrid system costs +$45/month vs Pi-only
+- But enables 33x more throughput
+- If scaling to 10+ posts/day, cost per post drops 80%
+- ROI: Positive if generating >15 posts/day
+
+---
+
+*Section 3 Complete. Next: Section 4 - Alternative Technology Stack Comparisons*
