@@ -25,7 +25,9 @@ services:
       - nexus
 
   n8n:
-    image: n8nio/n8n:latest
+    build:
+      context: .
+      dockerfile: n8n.Dockerfile
     container_name: nexus-n8n
     restart: unless-stopped
     environment:
@@ -75,6 +77,8 @@ services:
       - n8n_data:/home/node/.n8n
       - /srv/outputs:/data/outputs
       - /srv/projects/nexus:/data/workflows
+      - /srv/projects/faceless_prod/scripts:/data/scripts
+      - /srv/projects/faceless_prod/templates:/data/templates
     depends_on:
       postgres:
         condition: service_healthy

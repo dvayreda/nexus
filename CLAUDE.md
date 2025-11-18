@@ -42,12 +42,18 @@ Nexus is a self-contained automation workstation running on Raspberry Pi 4 desig
 
 **Services (Docker Compose stack):**
 - **PostgreSQL**: Primary database for n8n and event tracking
-- **n8n**: Workflow automation orchestrator (port 5678)
+- **n8n**: Workflow automation orchestrator (port 5678) - Custom image with ImageMagick installed
 - **code-server**: Web-based IDE (port 8080)
 - **Netdata**: System monitoring dashboard (port 19999)
 - **Watchtower**: Automatic container updates
 
+**Custom Docker Images:**
+- **n8n**: Built from `/srv/docker/n8n.Dockerfile` extending `n8nio/n8n:latest` with ImageMagick 7.1.2-8
+  - Supports image manipulation: JPEG, PNG, WEBP, TIFF, HEIC, SVG/RSVG
+  - ImageMagick commands available: `convert`, `magick`, `identify`, `composite`, etc.
+
 **Key Directories:**
+- `/srv/docker` - Docker Compose stack and custom Dockerfiles
 - `/srv/projects/faceless_prod` - Production workflows and code
 - `/srv/projects/faceless_dev` - Development workspace
 - `/srv/outputs` - Generated content (carousels, videos)
@@ -74,6 +80,13 @@ sudo docker compose restart n8n
 
 # Stop all services
 sudo docker compose down
+
+# Rebuild custom n8n image (after modifying n8n.Dockerfile)
+cd /srv/docker && sudo docker compose build n8n
+cd /srv/docker && sudo docker compose up -d n8n
+
+# Verify ImageMagick in n8n container
+sudo docker exec nexus-n8n convert -version
 ```
 
 ### Backup Operations
@@ -130,7 +143,8 @@ python tests/test_render.py
 
 1. **Content Generation**: n8n scheduled triggers call AI APIs to generate text content
 2. **Asset Fetching**: Pexels API provides candidate images based on content theme
-3. **Rendering**: Python/FFmpeg scripts render 5-slide carousels or short videos
+3. **Rendering**: Python/ImageMagick/FFmpeg scripts render 5-slide carousels or short videos
+   - ImageMagick available in n8n container for image composition and manipulation
 4. **Review Gate**: Telegram manual review step (human-in-the-loop approval)
 5. **Publishing**: n8n uploads approved content to platform APIs (Instagram/X/TikTok/YouTube)
 6. **Tracking**: Post metadata stored in PostgreSQL events table for analytics
