@@ -78,6 +78,28 @@ Context file for Claude Code when working with the Nexus automation platform.
 
 ---
 
+## n8n MCP Integration (Optional)
+
+**Model Context Protocol** enables Claude Code to interact directly with n8n workflows via API.
+
+**Setup required:** Configure `claude_desktop_config.json` on Windows with n8n MCP server
+**Documentation:** See `docs/operations/n8n-mcp-setup.md` for complete setup instructions
+
+**When configured, enables:**
+- Reading workflow structure and node configurations
+- Modifying workflows via conversation
+- Creating new workflows with AI assistance
+- Accessing documentation for 543 n8n nodes
+- Debugging workflow issues with full context
+
+**API credentials:**
+- n8n API key generated via web UI (http://100.122.207.23:5678)
+- API endpoint: http://100.122.207.23:5678/api/v1/
+
+**Status:** Setup instructions available, not yet configured in this session
+
+---
+
 ## Architecture Quick Reference
 
 ### Hardware & Disks
