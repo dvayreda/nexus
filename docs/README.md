@@ -22,7 +22,6 @@ Organized documentation for the Nexus AI content automation platform.
 
 **[🤖 ai-context/](ai-context/)** - AI assistant instructions
 - **[claude.md](ai-context/claude.md)** - Claude Code instructions
-- **[gemini.md](ai-context/gemini.md)** - Gemini AI instructions
 
 ### 🔮 STRATEGIC PLANNING (Future)
 

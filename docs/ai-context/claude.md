@@ -387,7 +387,6 @@ nexus-git-push "fix: Update config"
 - **FactsMind project:** `docs/projects/factsmind.md` - Build log and implementation details
 - **Maintenance:** `docs/operations/maintenance.md` - Backup/restore procedures, troubleshooting
 - **Architecture:** `docs/architecture/system-reference.md` - Deep technical reference
-- **Gemini context:** `docs/ai-context/gemini.md` - Instructions for Google Gemini
 
 **Root README:** `/README.md` - Project overview and quick links
 

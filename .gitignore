@@ -91,4 +91,10 @@ docs/_build/
 # Documentation junk
 output.txt
 output_carousels/
+
+# Windows WSL metadata
 *:Zone.Identifier
+*.Zone.Identifier
+
+# Example files (moved to examples/ directory)
+examples/

@@ -35,7 +35,6 @@ docs/
 | Document | Purpose | When to Use |
 |----------|---------|-------------|
 | **docs/ai-context/claude.md** | Claude Code instructions | When working with AI assistants |
-| **docs/ai-context/gemini.md** | Gemini AI instructions | When working with Gemini |
 | **docs/operations/maintenance.md** | Backup, restore, ops | Daily operations |
 | **docs/operations/helper-scripts.md** | 14 helper scripts guide | NEW! Daily diagnostics |
 | **docs/setup/quickstart.md** | Pi setup from scratch | Initial setup or rebuild |
