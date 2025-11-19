@@ -13,7 +13,7 @@ ELECTRIC_BLUE = (58, 175, 255)    # #3AAFFF - Primary accent
 CYAN_GLOW = (117, 232, 255)       # #75E8FF - Secondary glow
 SOFT_WHITE = (232, 232, 232)      # #E8E8E8 - Primary text
 NEBULA_PURPLE = (72, 42, 110)     # #482A6E - Background gradient
-DIVIDER_COLOR = CYAN_GLOW         # Use cyan glow for dividers
+DIVIDER_COLOR = SOFT_WHITE        # Use soft white to match text
 
 # Canvas Dimensions (1x Instagram native resolution - matches 1024x1024 images)
 WIDTH = 1080
@@ -21,12 +21,12 @@ HEIGHT = 1350
 
 # Layout Configuration - Slides 2-4
 IMAGE_Y_OFFSET = -75          # Move image upwards (negative = up)
-DIVIDER_Y = 850               # Divider line position (moved down)
-IMAGE_FADE_START = 700        # Where fade starts on canvas (before divider)
-TITLE_Y = 925                 # Title starting position (moved down)
+DIVIDER_Y = 800               # Divider line position (moved up 50px for tighter layout)
+IMAGE_FADE_START = 650        # Where fade starts on canvas (moved up 50px)
+TITLE_Y = 875                 # Title starting position (moved up 50px)
 SUBTITLE_Y_OFFSET = 35        # Gap from title end to subtitle start (tighter spacing)
 TEXT_MAX_WIDTH = 950          # Max text width (65px margins on each side)
-SWIPE_INDICATOR_Y = 1325      # Y position for "SWIPE >>>" indicator (25px from bottom)
+SWIPE_INDICATOR_Y = 1300      # Y position for "SWIPE >>>" indicator (50px from bottom) - more cornered
 
 # Layout Configuration - Slide 1 (Hook)
 HOOK_TEXT_Y = 575             # 42.5% from top (575/1350) - slight upward tension
@@ -42,15 +42,25 @@ TITLE_FONT_SIZE = 65          # Halved
 TITLE_EMPHASIS_SIZE = 68      # +3px for subtle emphasis on key words (disabled for now)
 SUBTITLE_FONT_SIZE = 40       # Halved
 DIVIDER_FONT_SIZE = 30        # Halved for visibility
-SWIPE_FONT_SIZE = 32          # Increased from 20 for better visibility
+SWIPE_FONT_SIZE = 24          # Reduced from 28 for subtlety
 LINE_HEIGHT_RATIO = 1.3       # Spacing between lines (unchanged)
 
 # Visual Effects
 TEXT_SHADOW_COLOR = (0, 0, 0, 180)      # Black with 70% opacity (180/255)
 TEXT_SHADOW_OFFSET = (3, 3)             # 3px offset
 TEXT_SHADOW_BLUR = 12                    # 12px blur radius
-LOGO_HALO_SIZE = 80                      # Halo radius around logo
-VIGNETTE_STRENGTH = 0.3                  # Vignette darkness (0-1)
+LOGO_HALO_SIZE = 40                      # Halo radius around logo (reduced for subtlety)
+LOGO_HALO_MAX_ALPHA = 80                 # Max halo opacity (reduced from 200 for subtlety)
+LOGO_OPACITY = 0.6                       # Logo opacity on slides 2-4 (0.6 = 60% to reduce competition with title)
+VIGNETTE_STRENGTH = 0.3                  # Vignette darkness for images (0-1)
+FINAL_VIGNETTE_STRENGTH = 0.2            # Final canvas vignette for focal effect (lighter than image vignette)
+SLIDE_5_BLUR_RADIUS = 8                  # Gaussian blur radius for slide 5 background (text readability) - DISABLED
+SLIDE_5_LINE1_SIZE = 55                  # "This is just" - smaller intro
+SLIDE_5_LINE2_SIZE = 95                  # "THE BEGINNING" - large emphasis
+SLIDE_5_LINE3_SIZE = 65                  # "Follow @factsmind" - CTA (same as title size)
+SLIDE_5_LINE4_SIZE = 48                  # "Endless discoveries await" - supporting text (bigger)
+SLIDE_5_TEXT_Y_START = 510               # Starting Y position for lines 1-2 (moved 15% up from 600)
+SLIDE_5_LINE3_Y = 808                    # Y position for line 3 (moved 15% up from 950)
 
 # Font Paths - FactsMind Official Typography (Montserrat)
 FONT_TITLE = "/data/fonts/Montserrat-ExtraBold.ttf"    # Titles: Montserrat ExtraBold
@@ -141,6 +151,39 @@ def apply_vignette(image, strength=VIGNETTE_STRENGTH):
     result = Image.composite(image, ImageEnhance.Brightness(image).enhance(1 - strength), vignette)
 
     return result
+
+
+def apply_final_vignette(canvas, strength=FINAL_VIGNETTE_STRENGTH):
+    """
+    Apply subtle vignette to entire final canvas for more focal view.
+    Creates radial gradient overlay that darkens edges while keeping center bright.
+    """
+    # Create RGBA overlay with transparent center
+    overlay = Image.new('RGBA', (WIDTH, HEIGHT), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(overlay)
+
+    center_x, center_y = WIDTH // 2, HEIGHT // 2
+    max_radius = int((WIDTH ** 2 + HEIGHT ** 2) ** 0.5 / 2)
+
+    # Draw radial gradient (darker at edges, transparent at center)
+    for radius in range(max_radius, 0, -20):
+        # Alpha increases as we move away from center (transparent center, dark edges)
+        # Using power of 2 for smooth falloff
+        norm_dist = 1 - (radius / max_radius)
+        alpha = int(255 * strength * (norm_dist ** 2))
+        if alpha > 0:
+            bbox = [
+                center_x - radius, center_y - radius,
+                center_x + radius, center_y + radius
+            ]
+            draw.ellipse(bbox, fill=(0, 0, 0, alpha))
+
+    # Composite overlay onto canvas
+    canvas_rgba = canvas.convert('RGBA')
+    result = Image.alpha_composite(canvas_rgba, overlay)
+
+    print(f"DEBUG: Applied final canvas vignette (strength={strength})")
+    return result.convert('RGB')
 
 
 def draw_text_with_shadow(draw, position, text, font, fill, shadow=True):
@@ -239,7 +282,7 @@ def draw_divider_with_branding(canvas, y_position):
 
     # Load and resize logo
     logo_path = "/data/scripts/factsmind_logo.png"
-    logo_height = 50  # Target height in pixels
+    logo_height = 70  # Target height in pixels (increased from 60 for better visibility)
 
     try:
         logo = Image.open(logo_path).convert('RGBA')
@@ -275,8 +318,8 @@ def draw_divider_with_branding(canvas, y_position):
 
         # Draw radial gradient (black in center fading to transparent)
         for radius in range(LOGO_HALO_SIZE, 0, -1):
-            # Alpha decreases as radius increases (black in center, transparent at edge)
-            alpha = int(200 * (radius / LOGO_HALO_SIZE))
+            # Alpha decreases as radius increases (opaque in center, transparent at edge)
+            alpha = int(LOGO_HALO_MAX_ALPHA * (1 - radius / LOGO_HALO_SIZE))
             halo_draw.ellipse(
                 [center_x - radius, center_y - radius, center_x + radius, center_y + radius],
                 fill=(0, 0, 0, alpha)
@@ -285,12 +328,18 @@ def draw_divider_with_branding(canvas, y_position):
         # Composite halo onto canvas
         canvas = Image.alpha_composite(canvas.convert('RGBA'), halo_overlay).convert('RGB')
 
-        # Paste logo (with alpha channel for transparency)
+        # Reduce logo opacity to avoid competing with title
+        logo_with_opacity = logo.copy()
+        alpha = logo_with_opacity.split()[3]  # Get alpha channel
+        alpha = alpha.point(lambda p: int(p * LOGO_OPACITY))  # Reduce opacity
+        logo_with_opacity.putalpha(alpha)
+
+        # Paste logo (with reduced opacity)
         canvas_rgba = canvas.convert('RGBA')
-        canvas_rgba.paste(logo, (logo_x, logo_y), logo)
+        canvas_rgba.paste(logo_with_opacity, (logo_x, logo_y), logo_with_opacity)
         canvas = canvas_rgba.convert('RGB')
 
-        print(f"DEBUG: Logo with halo placed at ({logo_x}, {logo_y}), size: {logo_width}x{logo_height}")
+        print(f"DEBUG: Logo with halo placed at ({logo_x}, {logo_y}), size: {logo_width}x{logo_height}, opacity: {LOGO_OPACITY}")
 
     except Exception as e:
         print(f"WARNING: Could not load logo ({e}), falling back to text")
@@ -447,30 +496,149 @@ def main():
     print(f"DEBUG: Title='{title}' ({len(title.split())} words)")
     print(f"DEBUG: Subtitle='{subtitle}' ({len(subtitle.split())} words)")
 
-    # Slide 5 (CTA) uses template - keep legacy behavior
+    # ========================================================================
+    # SLIDE 5: CTA (Same layout as slides 2-4, with blur and no swipe)
+    # ========================================================================
     if slide_num == 5:
-        template_map = {
-            "cta": "template_call_to_action.png"
-        }
-        template_file = template_map.get(slide_type, "template_call_to_action.png")
-        template = Image.open(f"/data/templates/{template_file}")
+        # Step 1: Create dark background
+        canvas = create_base_background()
 
-        # For CTA, just add text to template (no image)
-        draw = ImageDraw.Draw(template)
+        # Step 2: Load CTA background image at full size and 100% opacity
+        cta_img_path = "/data/outputs/logo/slide_5_background.png"
+        print(f"DEBUG: Looking for CTA background at: {cta_img_path}")
+
+        if os.path.exists(cta_img_path) and os.path.getsize(cta_img_path) > 0:
+            print(f"DEBUG: CTA image found, size: {os.path.getsize(cta_img_path)} bytes")
+
+            # Load and resize to cover full slide at 100% opacity
+            try:
+                ai_image = Image.open(cta_img_path)
+                print(f"DEBUG: Original CTA image size: {ai_image.size}")
+
+                # Scale to cover entire canvas (use max to ensure full coverage)
+                scale_x = WIDTH / ai_image.width
+                scale_y = HEIGHT / ai_image.height
+                scale = max(scale_x, scale_y)  # Use max to cover entire canvas
+
+                new_width = int(ai_image.width * scale)
+                new_height = int(ai_image.height * scale)
+                ai_image = ai_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
+                # Center crop to exact canvas size
+                left = (new_width - WIDTH) // 2
+                top = (new_height - HEIGHT) // 2
+                ai_image = ai_image.crop((left, top, left + WIDTH, top + HEIGHT))
+
+                print(f"DEBUG: CTA image scaled and cropped to full canvas: {ai_image.size}")
+
+                # NO darkening, NO fade - paste at 100% opacity covering full slide
+                canvas = ai_image.convert('RGB')
+                print(f"DEBUG: CTA image pasted at full slide, 100% opacity, no effects")
+
+            except Exception as e:
+                print(f"WARNING: Failed to load/resize CTA image: {e}")
+        else:
+            print(f"Warning: CTA image missing: {cta_img_path}")
+
+        # Step 3: Create draw object for text
+        draw = ImageDraw.Draw(canvas)
+
+        # Step 4: Draw custom 4-line CTA text with different sizes
         try:
-            title_font = ImageFont.truetype(FONT_TITLE, 90)
-            subtitle_font = ImageFont.truetype(FONT_BODY, 43)
+            line1_font = ImageFont.truetype(FONT_BODY, SLIDE_5_LINE1_SIZE)       # "This is just"
+            line2_font = ImageFont.truetype(FONT_TITLE, SLIDE_5_LINE2_SIZE)      # "THE BEGINNING"
+            line3_font = ImageFont.truetype(FONT_HANDLE, SLIDE_5_LINE3_SIZE)     # "Follow @factsmind"
+            line4_font = ImageFont.truetype(FONT_BODY, SLIDE_5_LINE4_SIZE)       # "Endless discoveries await"
         except:
-            title_font = ImageFont.load_default()
-            subtitle_font = ImageFont.load_default()
+            line1_font = line2_font = line3_font = line4_font = ImageFont.load_default()
 
-        draw_text_with_shadow(draw, (540, 975, "mm"), title, title_font, SOFT_WHITE, shadow=True)
-        draw_text_with_shadow(draw, (540, 1100, "mm"), subtitle, subtitle_font, SOFT_WHITE, shadow=True)
+        # Define the 4 lines
+        line1_text = "This is just"
+        line2_text = "THE BEGINNING"
+        line3_text = "Follow @factsmind"
+        line4_text = "Endless discoveries await"
 
-        # Save final output
+        # Calculate vertical spacing
+        current_y = SLIDE_5_TEXT_Y_START
+
+        # Line 1: "This is just" (smaller, regular)
+        draw_text_with_shadow(
+            draw,
+            (WIDTH // 2, current_y, "mm"),
+            line1_text,
+            line1_font,
+            SOFT_WHITE,
+            shadow=True
+        )
+        current_y += int(SLIDE_5_LINE1_SIZE * 1.6)  # More spacing
+
+        # Line 2: "THE BEGINNING" (large, bold)
+        draw_text_with_shadow(
+            draw,
+            (WIDTH // 2, current_y, "mm"),
+            line2_text,
+            line2_font,
+            SOFT_WHITE,
+            shadow=True
+        )
+
+        # Line 3: "Follow @factsmind" - positioned at standard title position
+        line3_y = SLIDE_5_LINE3_Y
+        draw_text_with_shadow(
+            draw,
+            (WIDTH // 2, line3_y, "mm"),
+            line3_text,
+            line3_font,
+            CYAN_GLOW,  # Use cyan for the @handle
+            shadow=True
+        )
+
+        # Line 4: "Endless discoveries await" - positioned below line 3 with spacing
+        line4_y = line3_y + int(SLIDE_5_LINE3_SIZE * 1.5)  # More spacing
+        draw_text_with_shadow(
+            draw,
+            (WIDTH // 2, line4_y, "mm"),
+            line4_text,
+            line4_font,
+            SOFT_WHITE,
+            shadow=True
+        )
+
+        print(f"DEBUG: CTA custom 4-line text rendered")
+
+        # Step 5: Apply final vignette to entire canvas for focal effect
+        canvas = apply_final_vignette(canvas, FINAL_VIGNETTE_STRENGTH)
+
+        # Step 6: Add centered logo (moved 200px up from bottom)
+        logo_path = "/data/scripts/factsmind_logo.png"
+        logo_height = 70  # Same size as divider logo
+        logo_bottom_margin = 240  # Distance from bottom edge (200px higher than before)
+
+        try:
+            logo = Image.open(logo_path).convert('RGBA')
+            # Maintain aspect ratio
+            aspect_ratio = logo.width / logo.height
+            logo_width = int(logo_height * aspect_ratio)
+            logo = logo.resize((logo_width, logo_height), Image.Resampling.LANCZOS)
+
+            # Calculate centered position at bottom
+            logo_x = (WIDTH - logo_width) // 2
+            logo_y = HEIGHT - logo_height - logo_bottom_margin
+
+            # Paste logo (with alpha channel for transparency)
+            canvas_rgba = canvas.convert('RGBA')
+            canvas_rgba.paste(logo, (logo_x, logo_y), logo)
+            canvas = canvas_rgba.convert('RGB')
+
+            print(f"DEBUG: CTA logo placed at ({logo_x}, {logo_y}), size: {logo_width}x{logo_height}")
+
+        except Exception as e:
+            print(f"WARNING: Could not load logo for CTA slide ({e})")
+
+        # Step 7: Save final output (NO swipe indicator for CTA slide)
         os.makedirs("/data/outputs/final", exist_ok=True)
-        template.save(f"/data/outputs/final/slide_{slide_num}_final.png")
-        print(f"Saved to /data/outputs/final/slide_{slide_num}_final.png")
+        canvas.save(f"/data/outputs/final/slide_{slide_num}_final.png")
+        print(f"Saved CTA slide to /data/outputs/final/slide_{slide_num}_final.png")
         return
 
     # ========================================================================
@@ -533,8 +701,24 @@ def main():
         lines = get_natural_line_breaks(title, hook_font, HOOK_MAX_WIDTH)
         print(f"DEBUG: Hook text in {len(lines)} lines: {lines}")
 
-        # Draw centered hook text with shadow
-        current_y = HOOK_TEXT_Y
+        # Calculate total hook text height for dynamic centering
+        line_spacing = int(HOOK_FONT_SIZE * 1.2)
+        total_hook_text_height = len(lines) * line_spacing
+
+        # Calculate available vertical space for hook text
+        hook_text_zone_start = 200  # Top margin
+        hook_text_zone_end = HOOK_CTA_Y - 100  # End above CTA with margin
+        available_hook_height = hook_text_zone_end - hook_text_zone_start
+
+        # Center hook text block vertically
+        vertical_hook_padding = (available_hook_height - total_hook_text_height) / 2
+        dynamic_hook_y = int(hook_text_zone_start + vertical_hook_padding)
+
+        print(f"DEBUG: Hook dynamic centering - Lines: {len(lines)}, Total height: {total_hook_text_height}px")
+        print(f"DEBUG: Centered HOOK_Y: {dynamic_hook_y} (was {HOOK_TEXT_Y})")
+
+        # Draw centered hook text with shadow at dynamically centered position
+        current_y = dynamic_hook_y
         for line in lines:
             draw_text_with_shadow(
                 draw,
@@ -544,7 +728,7 @@ def main():
                 SOFT_WHITE,
                 shadow=True
             )
-            current_y += int(HOOK_FONT_SIZE * 1.2)  # Tighter line spacing
+            current_y += line_spacing
 
         # Step 4: Draw CTA at bottom center
         try:
@@ -562,7 +746,10 @@ def main():
             shadow=True
         )
 
-        # Step 5: Save hook slide
+        # Step 5: Apply final vignette to entire canvas for focal effect
+        canvas = apply_final_vignette(canvas, FINAL_VIGNETTE_STRENGTH)
+
+        # Step 6: Save hook slide
         os.makedirs("/data/outputs/final", exist_ok=True)
         canvas.save(f"/data/outputs/final/slide_{slide_num}_final.png")
         print(f"Saved hook slide to /data/outputs/final/slide_{slide_num}_final.png")
@@ -614,11 +801,52 @@ def main():
     canvas = draw_divider_with_branding(canvas, DIVIDER_Y)
     draw = ImageDraw.Draw(canvas)
 
-    # Step 4: Draw title with smart text rendering
+    # Step 3.5: Pre-calculate text heights for dynamic vertical centering
+    # This ensures balanced layout regardless of content length
+    try:
+        temp_title_font = ImageFont.truetype(FONT_TITLE, TITLE_FONT_SIZE)
+        temp_subtitle_font = ImageFont.truetype(FONT_BODY, SUBTITLE_FONT_SIZE)
+    except:
+        temp_title_font = ImageFont.load_default()
+        temp_subtitle_font = ImageFont.load_default()
+
+    # Pre-calculate line counts
+    title_lines_preview = len(get_natural_line_breaks(title, temp_title_font, TEXT_MAX_WIDTH))
+    subtitle_lines_preview = len(get_natural_line_breaks(subtitle, temp_subtitle_font, TEXT_MAX_WIDTH))
+
+    # Calculate dynamic spacing based on subtitle line count
+    if subtitle_lines_preview <= 2:
+        dynamic_offset = 50   # More space for short subtitles
+    elif subtitle_lines_preview == 3:
+        dynamic_offset = 35   # Perfect spacing (current setting)
+    elif subtitle_lines_preview == 4:
+        dynamic_offset = 25   # Closer for 4 lines (target length)
+    else:  # 5+ lines
+        dynamic_offset = 20   # Very tight for edge cases
+
+    # Calculate total text block height
+    title_height = title_lines_preview * (TITLE_FONT_SIZE * LINE_HEIGHT_RATIO)
+    subtitle_height = subtitle_lines_preview * (SUBTITLE_FONT_SIZE * LINE_HEIGHT_RATIO)
+    total_text_height = title_height + dynamic_offset + subtitle_height
+
+    # Calculate available vertical space for text
+    text_zone_start = DIVIDER_Y + 75  # Start below divider with margin
+    text_zone_end = SWIPE_INDICATOR_Y - 20  # End above swipe with margin
+    available_height = text_zone_end - text_zone_start
+
+    # Center text block vertically in available space
+    vertical_padding = (available_height - total_text_height) / 2
+    dynamic_title_y = int(text_zone_start + vertical_padding)
+
+    print(f"DEBUG: Dynamic centering - Title lines: {title_lines_preview}, Subtitle lines: {subtitle_lines_preview}")
+    print(f"DEBUG: Total text height: {total_text_height}px, Available: {available_height}px")
+    print(f"DEBUG: Centered TITLE_Y: {dynamic_title_y} (was {TITLE_Y})")
+
+    # Step 4: Draw title with smart text rendering at dynamically centered position
     title_end_y, title_lines = draw_smart_text(
         draw,
         title,
-        TITLE_Y,
+        dynamic_title_y,  # Use calculated position instead of TITLE_Y
         TITLE_FONT_SIZE,
         TITLE_EMPHASIS_SIZE,
         TEXT_MAX_WIDTH,
@@ -629,28 +857,7 @@ def main():
 
     print(f"DEBUG: Title has {title_lines} lines, ends at Y={title_end_y}")
 
-    # Step 5: Calculate dynamic subtitle offset based on line count
-    # We need to check subtitle line count BEFORE rendering to position it correctly
-    # So we pre-calculate the line count
-    try:
-        temp_font = ImageFont.truetype(FONT_BODY, SUBTITLE_FONT_SIZE)
-    except:
-        temp_font = ImageFont.load_default()
-
-    subtitle_lines_preview = len(get_natural_line_breaks(subtitle, temp_font, TEXT_MAX_WIDTH))
-
-    # Dynamic spacing based on subtitle line count
-    if subtitle_lines_preview <= 2:
-        dynamic_offset = 50   # More space for short subtitles
-    elif subtitle_lines_preview == 3:
-        dynamic_offset = 35   # Perfect spacing (current setting)
-    elif subtitle_lines_preview == 4:
-        dynamic_offset = 25   # Closer for 4 lines (target length)
-    else:  # 5+ lines
-        dynamic_offset = 20   # Very tight for edge cases
-
-    print(f"DEBUG: Subtitle preview: {subtitle_lines_preview} lines -> using offset {dynamic_offset}px")
-
+    # Step 5: Calculate subtitle position based on title end and dynamic offset
     subtitle_y = title_end_y + dynamic_offset
 
     # Step 6: Draw subtitle with dynamic spacing
@@ -668,24 +875,29 @@ def main():
 
     print(f"DEBUG: Subtitle has {subtitle_lines} lines, ends at Y={subtitle_end_y}")
 
-    # Step 7: Add "SWIPE >>>" indicator in bottom right
+    # Step 7: Apply final vignette to entire canvas for focal effect
+    canvas = apply_final_vignette(canvas, FINAL_VIGNETTE_STRENGTH)
+    # Need to recreate draw object after canvas modification
+    draw = ImageDraw.Draw(canvas)
+
+    # Step 8: Add "SWIPE >>>" indicator in bottom right
     try:
-        swipe_font = ImageFont.truetype(FONT_BODY, SWIPE_FONT_SIZE)  # Increased for visibility
+        swipe_font = ImageFont.truetype(FONT_BODY, SWIPE_FONT_SIZE)  # Reduced for subtlety
     except:
         swipe_font = ImageFont.load_default()
 
     swipe_text = "SWIPE >>>"
-    # Position in bottom right corner (50px from right edge)
+    # Position in bottom right corner (60px from right edge for cornered feel)
     draw_text_with_shadow(
         draw,
-        (WIDTH - 50, SWIPE_INDICATOR_Y, "rm"),
+        (WIDTH - 60, SWIPE_INDICATOR_Y, "rm"),
         swipe_text,
         swipe_font,
-        CYAN_GLOW,
+        SOFT_WHITE,
         shadow=True
     )
 
-    # Step 8: Save final output
+    # Step 9: Save final output
     os.makedirs("/data/outputs/final", exist_ok=True)
     canvas.save(f"/data/outputs/final/slide_{slide_num}_final.png")
     print(f"Saved to /data/outputs/final/slide_{slide_num}_final.png")
