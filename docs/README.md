@@ -18,6 +18,8 @@ Project-specific documentation for content pipelines.
 Day-to-day operations, maintenance, and troubleshooting.
 
 - **[maintenance.md](operations/maintenance.md)** - System maintenance procedures and troubleshooting
+- **[instagram-posting-strategy.md](operations/instagram-posting-strategy.md)** - Instagram posting strategy for global educational content
+- **[n8n-mcp-setup.md](operations/n8n-mcp-setup.md)** - n8n MCP integration setup
 
 ### 🏗️ [architecture/](architecture/)
 System design, architecture decisions, and technical reference.

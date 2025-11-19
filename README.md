@@ -35,6 +35,7 @@ Nexus is a complete automation workstation for generating, rendering, and publis
 
 - **Setup:** [docs/setup/quickstart.md](docs/setup/quickstart.md)
 - **FactsMind Project:** [docs/projects/factsmind.md](docs/projects/factsmind.md) ← **Complete build documentation**
+- **Instagram Strategy:** [docs/operations/instagram-posting-strategy.md](docs/operations/instagram-posting-strategy.md) ← **Posting schedule & strategy**
 - **Architecture:** [docs/architecture/system-reference.md](docs/architecture/system-reference.md)
 - **Operations:** [docs/operations/maintenance.md](docs/operations/maintenance.md)
 - **AI Context:** [docs/ai-context/claude.md](docs/ai-context/claude.md) ← **For Claude Code sessions**
