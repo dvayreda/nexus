@@ -136,7 +136,6 @@ Context file for Claude Code when working with the Nexus automation platform.
 │   └── n8n.Dockerfile              # Custom n8n image with Python
 ├── projects/
 │   ├── faceless_prod/
-│   │   ├── factsmind_workflow.json # n8n workflow export
 │   │   ├── scripts/composite.py    # Python carousel composition
 │   │   └── templates/              # Figma template PNGs (2160x2700)
 │   └── nexus/                      # Git repo clone
@@ -405,6 +404,6 @@ nexus-git-push "fix: Update config"
 - Dockerfiles: `PascalCase.Dockerfile`
 
 **Testing:**
-- No formal test suite currently
-- Manual testing via n8n workflow execution
-- Schema validation in `schemas/carousel_manifest.schema.json`
+- Formal test suite using pytest (see `tests/` directory)
+- Test coverage reporting with pytest-cov (80% minimum required)
+- Manual testing via n8n workflow execution for integration tests

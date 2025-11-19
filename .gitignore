@@ -98,3 +98,10 @@ output_carousels/
 
 # Example files (moved to examples/ directory)
 examples/
+
+# n8n workflow exports (managed via n8n UI, not version controlled)
+*_workflow.json
+factsmind_workflow.json
+
+# JSON schemas (future use - not currently implemented)
+schemas/
