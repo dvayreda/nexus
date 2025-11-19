@@ -8,9 +8,9 @@ Context file for Claude Code when working with the Nexus automation platform.
 
 **Current Production System:** FactsMind carousel generator
 - Platform: Instagram (1-3 posts/day)
-- Content: 5-slide educational carousels (science, psychology, tech, history, space)
-- Pipeline: Groq (fact generation) → Gemini (content expansion + AI images) → Python/Pillow (carousel composition) → Telegram (manual approval) → Manual Instagram upload
-- Status: Fully operational, generating daily content
+- Content: 4-slide educational carousels (science, psychology, tech, history, space)
+- Pipeline: Gemini (fact + content generation + AI images) → Python/Pillow (pure Python composition) → Manual Instagram upload
+- Status: ✅ Production ready with complete visual polish (Nov 2025)
 
 **Infrastructure:**
 - Raspberry Pi 4 (4GB RAM, 2GB swap)
@@ -154,9 +154,9 @@ Context file for Claude Code when working with the Nexus automation platform.
 - `docker_redis_data` → Redis persistence
 
 **Volume mounts (in n8n container):**
-- `/data/outputs` → `/srv/outputs`
-- `/data/scripts` → `/srv/projects/faceless_prod/scripts`
-- `/data/templates` → `/srv/projects/faceless_prod/templates`
+- `/data/outputs` → `/srv/outputs` (AI images + final composites)
+- `/data/scripts` → `/srv/projects/faceless_prod/scripts` (composite.py, logo)
+- `/data/fonts` → `/srv/projects/faceless_prod/fonts` (Montserrat typography)
 
 ---
 
@@ -165,39 +165,58 @@ Context file for Claude Code when working with the Nexus automation platform.
 **Complete workflow (n8n orchestration):**
 
 ```
-1. Schedule Trigger (1-3x daily)
+1. Manual Trigger (Execute workflow button)
    ↓
-2. Groq API: Generate 5 mind-blowing facts
+2. Get Topic → Topic Generator (Parse input)
    ↓
-3. For each fact:
-   - Gemini: Expand into hook/body/CTA
-   - Gemini: Generate AI image (slides 1-4 only)
-   - Write image to /data/outputs/slide_N.png
+3. Fact Generator (Gemini): Generate verified fact
    ↓
-4. Python Execute Command (for each slide):
-   python3 /data/scripts/composite.py <slide_num> <type> "<title>" "<subtitle>"
+4. Content Engine (Gemini): Generate complete carousel JSON
+   - 4 slides (1 hook + 3 reveals)
+   - Image prompts per slide
+   - Visual keywords, hashtags, captions
    ↓
-5. Composite script (composite.py):
-   - Load Figma template PNG (2160x2700px)
-   - Paste AI image with aspect ratio preservation (center crop)
-   - Render text overlays (180pt title, 85pt subtitle)
+5. Image Prompt Optimizer (Code node): Enhance prompts with brand guidelines
+   ↓
+6. [4 PARALLEL PATHS - Slides 1-4]
+   Each path:
+   - Gemini Image: Generate 1024x1024 AI image
+   - Write File: Save to /data/outputs/slide_N.png
+   - Code: Build composite.py command with proper escaping
+   - Execute Command: python3 /data/scripts/composite.py ...
+   ↓
+7. Composite script (composite.py) - PURE PYTHON GENERATION:
+   - Create dark navy background with subtle purple gradient
+   - Load and resize AI image (vignette + fade effects)
+   - Draw divider with FactsMind logo (spherical halo effect)
+   - Render title text (Montserrat ExtraBold, 65px/110px)
+   - Render subtitle text (Montserrat Regular, 40px)
+   - Add text shadows (ALL text for readability)
+   - Add SWIPE indicator (cyan glow, 32px)
    - Save to /data/outputs/final/slide_N_final.png
    ↓
-6. Telegram: Send carousel for manual approval
-   ↓
-7. Manual: Download from Samba share, upload to Instagram
+8. Manual: Download from Samba share, upload to Instagram
 ```
 
-**Template types:**
-- `template_hook_question.png` - Slide 1 (hook with question)
-- `template_progressive_reveal.png` - Slides 2-4 (body content)
-- `template_call_to_action.png` - Slide 5 (CTA + branding)
+**NO TEMPLATES - Pure Python generation!**
 
-**Image specifications:**
-- Canvas: 2160x2700px (Instagram carousel optimal)
-- AI images: 1024x1024 → smart crop to 2160x1760
-- Fonts: DejaVuSans-Bold (180pt), DejaVuSans (85pt)
-- Text positioning: Y=1950 (title), Y=2200 (subtitle)
+**Visual specifications (FactsMind Official Style Guide):**
+- **Canvas:** 1080x1350px (Instagram native resolution)
+- **Background:** Dark navy (#020308) + subtle purple gradient (bottom 20%)
+- **Fonts:** Montserrat ExtraBold/Regular/SemiBold
+  - Hook: 110px
+  - Title: 65px
+  - Subtitle: 40px
+  - SWIPE: 32px (cyan glow)
+- **Colors:**
+  - Text: Soft White (#E8E8E8)
+  - Accents: Cyan Glow (#75E8FF)
+  - Divider: Cyan Glow (#75E8FF)
+- **Visual Effects:**
+  - Text shadows: 3px offset, 12px blur, 70% opacity
+  - Image vignette: 30% strength
+  - Image fade: Y=700 → transparent
+  - Logo halo: 80px spherical black gradient
 
 ---
 
@@ -208,6 +227,30 @@ Context file for Claude Code when working with the Nexus automation platform.
 - ❌ Never use `/tmp/` (not persistent across container restarts)
 - Example: `/data/outputs/slide_1.png` not `/tmp/slide_1.png`
 
+### Image Transfer & 400 Error Fix (CRITICAL)
+**NEVER use `cat` over SSH for binary image files!**
+
+❌ **Wrong (corrupts images, causes 400 errors):**
+```bash
+~/ssh-nexus 'cat /srv/outputs/slide.png > /tmp/slide.png'
+# Result: "Could not process image" API 400 error
+# File shows as "data" instead of "PNG image data"
+```
+
+✅ **Correct (preserves binary data):**
+```bash
+scp didac@100.122.207.23:/srv/outputs/slide.png /tmp/slide.png
+# Or access via Samba: \\100.122.207.23\nexus-outputs\
+```
+
+**Why:** `cat` treats binary files as text over SSH pipes, corrupting the image data.
+
+### n8n Workflow Interactions
+- ❌ **Don't read workflow JSON files** (FactsMindFlow from gpt.json, etc.) - triggers n8n API errors
+- ❌ **Don't try to programmatically deploy workflows** - use n8n UI only
+- ✅ **Only manage Python scripts, fonts, and output files**
+- ✅ **Let user handle all workflow changes via n8n web UI**
+
 ### Disk Confusion
 - `/dev/sda` = BACKUP disk (not system!)
 - `/dev/sdb` = SYSTEM disk (not backup!)
@@ -215,11 +258,13 @@ Context file for Claude Code when working with the Nexus automation platform.
 
 ### File Transfers
 - **Primary:** Edit via Samba shares (user-friendly, persistent)
-- **Alternative:** SSH copy with heredoc for complex files
+- **Alternative:** SSH copy with `scp` for binary files
+- **Never:** `cat` over SSH for images/binaries
 - **Restart required:** After editing docker-compose.yml or scripts
 
 ### Python in n8n
-- n8n container has Python 3.12 + Pillow pre-installed
+- n8n container has Python 3.12 + Pillow 11.0 pre-installed
+- Montserrat fonts mounted at /data/fonts/
 - No need for separate Python container
 - Execute via: `python3 /data/scripts/script.py args`
 
