@@ -1,0 +1,340 @@
+#!/usr/bin/env bash
+# nexus-git-push - Automated git workflow for Nexus development (WSL2)
+# Usage: ./nexus-git-push [message] [--force] [--branch NAME]
+
+set -euo pipefail
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+
+# Default values
+COMMIT_MESSAGE=""
+FORCE_PUSH=false
+TARGET_BRANCH=""
+AUTO_MESSAGE=false
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --force|-f)
+            FORCE_PUSH=true
+            shift
+            ;;
+        --branch|-b)
+            TARGET_BRANCH="$2"
+            shift 2
+            ;;
+        --auto)
+            AUTO_MESSAGE=true
+            shift
+            ;;
+        --help|-h)
+            echo "Usage: $0 [message] [options]"
+            echo ""
+            echo "Options:"
+            echo "  --force, -f          Force push (use with caution)"
+            echo "  --branch NAME, -b    Push to specific branch"
+            echo "  --auto               Auto-generate commit message from changes"
+            echo ""
+            echo "Examples:"
+            echo "  $0 'Add new feature'"
+            echo "  $0 --auto"
+            echo "  $0 'Fix bug' --branch develop"
+            exit 0
+            ;;
+        *)
+            if [ -z "$COMMIT_MESSAGE" ]; then
+                COMMIT_MESSAGE="$1"
+            fi
+            shift
+            ;;
+    esac
+done
+
+echo "╔═══════════════════════════════════════════════════════════╗"
+echo "║            NEXUS GIT PUSH AUTOMATION                     ║"
+echo "╚═══════════════════════════════════════════════════════════╝"
+echo ""
+
+# Check if we're in a git repository
+if ! git rev-parse --git-dir > /dev/null 2>&1; then
+    echo -e "${RED}Error: Not in a git repository${NC}"
+    exit 1
+fi
+
+# Get repository info
+REPO_ROOT=$(git rev-parse --show-toplevel)
+CURRENT_BRANCH=$(git branch --show-current)
+
+echo "Repository: $REPO_ROOT"
+echo "Current branch: $CURRENT_BRANCH"
+echo ""
+
+# Determine target branch
+if [ -z "$TARGET_BRANCH" ]; then
+    TARGET_BRANCH="$CURRENT_BRANCH"
+fi
+
+# Check for uncommitted changes
+echo -e "${BLUE}━━━ CHECKING WORKSPACE STATUS ━━━${NC}"
+echo ""
+
+# Check for untracked files
+UNTRACKED=$(git ls-files --others --exclude-standard | wc -l)
+MODIFIED=$(git diff --name-only | wc -l)
+STAGED=$(git diff --cached --name-only | wc -l)
+
+echo "Untracked files: $UNTRACKED"
+echo "Modified files: $MODIFIED"
+echo "Staged files: $STAGED"
+echo ""
+
+if [ "$UNTRACKED" -eq 0 ] && [ "$MODIFIED" -eq 0 ] && [ "$STAGED" -eq 0 ]; then
+    echo -e "${YELLOW}No changes to commit${NC}"
+    echo ""
+    echo "Would you like to push existing commits? [y/N]: "
+    read -r response
+    if [[ ! "$response" =~ ^[Yy]$ ]]; then
+        echo "Operation cancelled"
+        exit 0
+    fi
+    SKIP_COMMIT=true
+else
+    SKIP_COMMIT=false
+fi
+
+# Show changes summary
+if [ "$SKIP_COMMIT" = false ]; then
+    echo -e "${BLUE}━━━ CHANGES SUMMARY ━━━${NC}"
+    echo ""
+
+    if [ "$UNTRACKED" -gt 0 ]; then
+        echo "Untracked files:"
+        git ls-files --others --exclude-standard | head -10 | sed 's/^/  + /'
+        if [ "$UNTRACKED" -gt 10 ]; then
+            echo "  ... and $((UNTRACKED - 10)) more"
+        fi
+        echo ""
+    fi
+
+    if [ "$MODIFIED" -gt 0 ]; then
+        echo "Modified files:"
+        git diff --name-only | head -10 | sed 's/^/  M /'
+        if [ "$MODIFIED" -gt 10 ]; then
+            echo "  ... and $((MODIFIED - 10)) more"
+        fi
+        echo ""
+    fi
+
+    if [ "$STAGED" -gt 0 ]; then
+        echo "Staged files:"
+        git diff --cached --name-only | head -10 | sed 's/^/  S /'
+        if [ "$STAGED" -gt 10 ]; then
+            echo "  ... and $((STAGED - 10)) more"
+        fi
+        echo ""
+    fi
+
+    # Show detailed diff for review
+    echo "Detailed changes:"
+    git diff --stat
+    echo ""
+
+    # Auto-generate commit message if requested
+    if [ "$AUTO_MESSAGE" = true ] || [ -z "$COMMIT_MESSAGE" ]; then
+        echo -e "${CYAN}Generating commit message...${NC}"
+
+        # Analyze changes to create smart message
+        ADDED_FILES=$(git ls-files --others --exclude-standard | wc -l)
+        MODIFIED_FILES=$(git diff --name-only | wc -l)
+        DELETED_FILES=$(git diff --name-only --diff-filter=D | wc -l)
+
+        # Determine change type
+        if [ "$ADDED_FILES" -gt "$MODIFIED_FILES" ]; then
+            CHANGE_TYPE="feat"
+            CHANGE_DESC="Add new files"
+        elif [ "$DELETED_FILES" -gt 0 ]; then
+            CHANGE_TYPE="refactor"
+            CHANGE_DESC="Remove and reorganize files"
+        else
+            CHANGE_TYPE="update"
+            CHANGE_DESC="Update existing files"
+        fi
+
+        # Check what types of files changed
+        SCRIPT_CHANGES=$(git diff --name-only | grep -E '\.(sh|py)$' | wc -l || echo "0")
+        DOC_CHANGES=$(git diff --name-only | grep -E '\.(md|txt)$' | wc -l || echo "0")
+        CONFIG_CHANGES=$(git diff --name-only | grep -E '\.(yml|yaml|json|env)$' | wc -l || echo "0")
+
+        if [ "$DOC_CHANGES" -gt 0 ]; then
+            CHANGE_TYPE="docs"
+            CHANGE_DESC="Update documentation"
+        elif [ "$CONFIG_CHANGES" -gt 0 ]; then
+            CHANGE_TYPE="config"
+            CHANGE_DESC="Update configuration"
+        fi
+
+        COMMIT_MESSAGE="$CHANGE_TYPE: $CHANGE_DESC ($((ADDED_FILES + MODIFIED_FILES)) files)"
+
+        echo "Generated message: $COMMIT_MESSAGE"
+        echo ""
+        echo -n "Use this message? [Y/n]: "
+        read -r response
+        if [[ "$response" =~ ^[Nn]$ ]]; then
+            echo -n "Enter commit message: "
+            read -r COMMIT_MESSAGE
+        fi
+    fi
+
+    # Validate commit message
+    if [ -z "$COMMIT_MESSAGE" ]; then
+        echo -e "${RED}Error: Commit message required${NC}"
+        echo "Usage: $0 'your message here'"
+        exit 1
+    fi
+
+    # Stage all changes
+    echo -e "${BLUE}━━━ STAGING CHANGES ━━━${NC}"
+    echo ""
+
+    git add -A
+    echo -e "${GREEN}✓ All changes staged${NC}"
+    echo ""
+
+    # Commit changes
+    echo -e "${BLUE}━━━ CREATING COMMIT ━━━${NC}"
+    echo ""
+
+    if git commit -m "$COMMIT_MESSAGE"; then
+        echo -e "${GREEN}✓ Commit created successfully${NC}"
+        COMMIT_HASH=$(git rev-parse --short HEAD)
+        echo "Commit: $COMMIT_HASH"
+        echo ""
+    else
+        echo -e "${RED}✗ Commit failed${NC}"
+        exit 1
+    fi
+fi
+
+# Check remote status
+echo -e "${BLUE}━━━ CHECKING REMOTE STATUS ━━━${NC}"
+echo ""
+
+# Fetch remote changes
+echo "Fetching remote changes..."
+if git fetch origin "$TARGET_BRANCH" 2>/dev/null; then
+    echo -e "${GREEN}✓ Remote fetched${NC}"
+
+    # Check if local is behind remote
+    LOCAL=$(git rev-parse HEAD)
+    REMOTE=$(git rev-parse "origin/$TARGET_BRANCH" 2>/dev/null || echo "")
+
+    if [ -n "$REMOTE" ]; then
+        if [ "$LOCAL" = "$REMOTE" ]; then
+            echo "Status: Up to date with remote"
+        else
+            BEHIND=$(git rev-list HEAD..origin/"$TARGET_BRANCH" --count 2>/dev/null || echo "0")
+            AHEAD=$(git rev-list origin/"$TARGET_BRANCH"..HEAD --count 2>/dev/null || echo "0")
+
+            if [ "$BEHIND" -gt 0 ]; then
+                echo -e "${YELLOW}⚠ Local is $BEHIND commit(s) behind remote${NC}"
+
+                if [ "$FORCE_PUSH" = false ]; then
+                    echo ""
+                    echo "Options:"
+                    echo "  1. Pull and merge remote changes first"
+                    echo "  2. Force push (will overwrite remote)"
+                    echo ""
+                    echo -n "Choose [1/2]: "
+                    read -r choice
+
+                    if [ "$choice" = "1" ]; then
+                        echo "Pulling remote changes..."
+                        git pull origin "$TARGET_BRANCH"
+                    elif [ "$choice" = "2" ]; then
+                        FORCE_PUSH=true
+                    else
+                        echo "Invalid choice. Exiting."
+                        exit 1
+                    fi
+                fi
+            fi
+
+            if [ "$AHEAD" -gt 0 ]; then
+                echo -e "${GREEN}✓ Local is $AHEAD commit(s) ahead of remote${NC}"
+            fi
+        fi
+    fi
+else
+    echo -e "${YELLOW}⚠ Could not fetch remote (might be first push)${NC}"
+fi
+echo ""
+
+# Push to remote
+echo -e "${BLUE}━━━ PUSHING TO REMOTE ━━━${NC}"
+echo ""
+
+if [ "$FORCE_PUSH" = true ]; then
+    echo -e "${RED}WARNING: Force push will overwrite remote history${NC}"
+    echo -n "Are you sure? [y/N]: "
+    read -r response
+    if [[ ! "$response" =~ ^[Yy]$ ]]; then
+        echo "Push cancelled"
+        exit 0
+    fi
+
+    PUSH_CMD="git push origin $TARGET_BRANCH --force"
+else
+    PUSH_CMD="git push origin $TARGET_BRANCH"
+fi
+
+echo "Executing: $PUSH_CMD"
+echo ""
+
+if eval "$PUSH_CMD"; then
+    echo ""
+    echo -e "${GREEN}✓ Successfully pushed to origin/$TARGET_BRANCH${NC}"
+
+    # Show final status
+    echo ""
+    echo -e "${BLUE}━━━ FINAL STATUS ━━━${NC}"
+    git log -1 --oneline
+    echo ""
+
+    # Show remote URL
+    REMOTE_URL=$(git remote get-url origin)
+    echo "Remote: $REMOTE_URL"
+
+    # Try to extract and show GitHub/GitLab URL
+    if [[ "$REMOTE_URL" =~ github\.com ]]; then
+        REPO_PATH=$(echo "$REMOTE_URL" | sed 's/.*github\.com[:/]\(.*\)\.git/\1/')
+        echo "View on GitHub: https://github.com/$REPO_PATH/tree/$TARGET_BRANCH"
+    elif [[ "$REMOTE_URL" =~ gitlab\.com ]]; then
+        REPO_PATH=$(echo "$REMOTE_URL" | sed 's/.*gitlab\.com[:/]\(.*\)\.git/\1/')
+        echo "View on GitLab: https://gitlab.com/$REPO_PATH/-/tree/$TARGET_BRANCH"
+    fi
+
+    echo ""
+    echo -e "${GREEN}✓ Git push automation completed${NC}"
+else
+    echo ""
+    echo -e "${RED}✗ Push failed${NC}"
+    echo ""
+    echo "Common solutions:"
+    echo "  • Check network connection"
+    echo "  • Verify remote repository access"
+    echo "  • Try: git pull origin $TARGET_BRANCH"
+    echo "  • Use --force if you need to overwrite remote"
+    exit 1
+fi
+
+echo ""
+echo "Next steps:"
+echo "  • Create PR: gh pr create (if GitHub CLI installed)"
+echo "  • Deploy changes: ./nexus-deploy"
+echo "  • Sync to Pi: rsync -av . didac@<pi-ip>:/srv/projects/nexus/"
