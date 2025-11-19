@@ -18,6 +18,28 @@ Every significant decision documented with context, alternatives, and outcomes.
 
 ## November 2024
 
+### Decision: Start with ChatGPT Research
+**Date:** Day 0 (~18 days ago)
+**Context:** How do we even begin with faceless content monetization?
+**The Spark:** "Strong ChatGPT prompt on how to make faceless content money generation"
+
+**What We Did:**
+- Asked ChatGPT for comprehensive strategy
+- Got ideas on different approaches
+- Started experimenting with structures
+- This led to the whole journey
+
+**Why This Worked:**
+- Clear goal from day 1 (make money from content)
+- Research before building
+- Understood the landscape
+- Had multiple paths to explore
+
+**Outcome:** ✅ *Led to everything - the foundation of the journey*
+**Would We Do It Again?** ✅ *Absolutely - start with research, understand what's possible*
+
+---
+
 ### Decision: Build Infrastructure First, Monetize Later
 **Date:** November 2024
 **Context:** Could rush to market with manual processes OR build automation first
@@ -38,24 +60,26 @@ Every significant decision documented with context, alternatives, and outcomes.
 
 ---
 
-### Decision: Raspberry Pi Infrastructure
-**Date:** October 2024
-**Context:** Need 24/7 system for automation
-**Alternatives:**
-- Cloud VPS ($5-20/month)
-- Local machine (not 24/7)
-- Serverless (complex for our needs)
+### Decision: Raspberry Pi Infrastructure (After Cloud Detour)
+**Date:** November 2024
+**Context:** Need 24/7 system for automation - tried cloud first, came back to local
+**The Journey:**
+- Started with local PC setup
+- Tried cloud VPS
+- Got sidetracked on another cloud project
+- Finally: Built Nexus (Raspberry Pi)
 
-**Reasoning:**
-- One-time cost vs recurring
-- Learn Linux/Docker deeply
-- Own the hardware
+**Why Pi After Cloud:**
+- One-time cost vs recurring cloud bills
+- Learn Linux/Docker/networking deeply
+- Own the hardware, full control
 - Good enough for our scale
+- More fun to build
 
-**Outcome:** ✅ *Working! Stable after initial setup hell*
-**Cost:** $150 one-time vs $5-20/month = pays back in 7-30 months
-**Issues:** Took longer to debug than cloud would have
-**Would We Do It Again?** ✅ *Yes - the learning was worth it*
+**Outcome:** ✅ *Working! Nexus is stable, runs 24/7*
+**Cost:** $150 one-time vs $5-20/month cloud = breaks even in 7-30 months
+**Real Learning:** The detours taught us what we actually needed
+**Would We Do It Again?** ✅ *Yes - the cloud detour wasn't wasted, it clarified what we wanted*
 
 ---
 
@@ -80,22 +104,31 @@ Every significant decision documented with context, alternatives, and outcomes.
 
 ---
 
-### Decision: Instagram First (not YouTube/TikTok)
+### Decision: Instagram Carousel First (Sequential Platform Launch)
 **Date:** November 2024
 **Context:** Which platform to launch on first?
 **Alternatives:**
-- YouTube (higher revenue potential)
-- TikTok (easier to go viral)
-- All at once (spread thin)
+- YouTube (higher revenue potential, but video is harder)
+- TikTok (easier to go viral, but need video too)
+- All at once (spread thin, nothing done well)
 
 **Reasoning:**
 - Carousels easier than video for first automation
-- Instagram has good engagement for educational content
+- Instagram has good engagement for educational/factual content
 - Learn with simpler format first
 - Skills transfer to other platforms later
+- One platform at a time = actually finish things
 
-**Outcome:** ⏳ *Automation done, launching soon*
-**Would We Do It Again?** ⏳ *TBD based on results*
+**The Plan:**
+1. IG Carousel (nearly done - just design finishing touches)
+2. Auto-publishing to IG (next step)
+3. YouTube video automation (after IG works)
+4. TikTok (after YouTube)
+5. Analytics infrastructure (~1 week or more from now)
+
+**Outcome:** ⏳ *~95% done on carousel generation, auto-publish next*
+**Timeline:** 18 days to get carousel solid
+**Would We Do It Again?** ⏳ *Ask after first month of posting*
 
 ---
 
