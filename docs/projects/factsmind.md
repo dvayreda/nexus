@@ -1,9 +1,19 @@
 # FactsMind Workflow - Complete Build Documentation
 
 ## Project Overview
-**FactsMind** is an automated content generation system that transforms facts into premium Instagram carousel content. The workflow generates 4-slide carousels with AI-powered images and programmatically generated text overlays using the official FactsMind style guide.
+**FactsMind** is an automated content generation system that transforms facts into premium Instagram carousel content. The workflow generates 5-slide carousels with AI-powered images and programmatically generated text overlays using the official FactsMind style guide.
 
-**Status:** ✅ **PRODUCTION READY** - All visual improvements complete as of November 2025
+**Status:** 🚀 **LIVE IN PRODUCTION** - First carousel posted November 19, 2025
+
+## 🎉 Production Launch Status
+
+**Launch Date:** November 19, 2025
+**Platform:** Instagram (@factsmind)
+**Posting Schedule:** Daily at 18:30 CET
+**Current Phase:** Phase 1 - Foundation (0-1K followers)
+
+**Bio:** "The world is stranger than you think. 🧠 Unseen Science & History."
+**Link:** Bento.me (Dark Mode) with featured "📚 The Science Library" card
 
 ---
 
@@ -26,17 +36,23 @@ Topic Generator (Parse)
     ↓
 Fact Generator (Gemini)
     ↓
-Content Engine (Gemini - Generates full carousel JSON)
+Content Engine (Gemini 3 Pro Preview - Generates full carousel JSON + Amazon product)
     ↓
 Image Prompt Optimizer (Code node)
     ↓
-[4 Parallel Paths - Slides 1-4]
-    ├─ Gemini Image 1 → Write File 1 → Code 1 → Execute Command 1
-    ├─ Gemini Image 2 → Write File 2 → Code 2 → Execute Command 2
-    ├─ Gemini Image 3 → Write File 3 → Code 3 → Execute Command 3
-    └─ Gemini Image 4 → Write File 4 → Code 4 → Execute Command 4
+[6 Parallel Paths - Slides 1-5 + Story Background]
+    ├─ Gemini Image 1 (Hook) → Write File 1 → Code 1 → Execute Command 1
+    ├─ Gemini Image 2 (Reveal) → Write File 2 → Code 2 → Execute Command 2
+    ├─ Gemini Image 3 (Mechanism) → Write File 3 → Code 3 → Execute Command 3
+    ├─ Gemini Image 4 (Twist) → Write File 4 → Code 4 → Execute Command 4
+    ├─ Gemini Image 5 (Outro) → Write File 5 → Code 5 → Execute Command 5
+    └─ Gemini Image 6 (Story 9:16) → Write File 6
         ↓
-Final Output: /data/outputs/final/slide_1_final.png ... slide_4_final.png
+Telegram Delivery (multipart POST with sendMediaGroup)
+    ├─ Album: 6 photos (Feed slides 1-5 + Story background)
+    └─ Message: Caption + Amazon product recommendation
+        ↓
+Final Output: /data/outputs/final/slide_1_final.png ... slide_5_final.png + story.png
 ```
 
 ---
@@ -136,32 +152,84 @@ DARK_NAVY = (2, 3, 8)             # Base background color
 
 ## Key Components & Configurations
 
-### 1. Content Engine (Gemini LLM)
+### 1. Content Engine (Gemini 3 Pro Preview)
 **Node:** Content Engine
-- **Model:** gemini-2.0-flash-exp
+- **Model:** `gemini-3-pro-preview` (upgraded for better logical reasoning and constraint adherence)
 - **Temperature:** 0.4
 - **Structured Output:** Full carousel JSON with:
-  - Instagram carousel (4 slides: hook + 3 reveals)
+  - Instagram carousel (5 slides: hook + 3 reveals + outro)
   - Image prompts per slide
   - Visual keywords
   - Hashtags
   - Captions
+  - **Amazon product recommendation** (product name + Story CTA text)
+
+**Narrative Structure Rules (Critical):**
+
+**Slide 1 (Hook):** Direct declarative paradox
+- ❌ NO: "What if..." questions
+- ✅ YES: "This blue planet is a lie." (bold statement)
+
+**Slide 2 (Reveal):** Phenomenon name + precise definition
+- Must introduce scientific/technical term
+- ❌ NO: Inaccurate metaphors like "it burns"
+- ✅ YES: Accurate, specific terminology
+
+**Slide 3 (Mechanism):** 🔬 **CRITICAL ANTI-HALLUCINATION RULE**
+- **FORCE MACRO/MICROSCOPIC visualization**
+- Purpose: Prevents AI from generating fantasy imagery (e.g., mythical birds)
+- ✅ YES: Cellular structures, atomic processes, geological formations, neural pathways
+- ❌ NO: Metaphorical animals, abstract concepts, fantasy elements
+
+**Slide 4 (Twist):** Real-world consequence
+- Visual design: **THICK, BOLD LINES** for mobile visibility
+- Show actual impact or application
+
+**Slide 5 (Outro):** Minimalist branding
+- Text and logo positioned **15% higher** (avoids collision with Instagram UI)
+- Clean, simple design
+
+**Story Background (6th Image):**
+- Vertical format (9:16, 1080x1920)
+- Dark, minimalist aesthetic
+- Designed for Link Sticker placement
 
 **Image Prompt Guidelines:**
-- Slide 1 (Hook): Visually striking, dramatic lighting, bold composition
-- Slides 2-4 (Reveals): Concept illustration, comparisons, consequences
-- Style: Professional, cinematic, realistic (NOT fantasy/dreamscapes)
-- NO: Text overlays, arrows, diagrams, generic brains
-- YES: Specific subjects, dramatic lighting, professional photography
+- Style: "Dark, Cinematic, Documentary-grade Sci-Fi"
+- Professional, realistic photography (NOT fantasy/dreamscapes)
+- NO: Text overlays, arrows, diagrams, generic brains, fantasy creatures
+- YES: Specific subjects, dramatic lighting, macro/micro perspectives
 
-### 2. Image Generation (4 Parallel Paths)
-**Node:** Gemini Image (x4)
+### 2. Image Generation (6 Parallel Paths)
+**Node:** Gemini Image (x6)
 - **Model:** imagen-3.0-generate-001
 - **Input:** Optimized prompts from Image Prompt Optimizer
-- **Output:** 1024x1024 PNG images
-- **Save to:** /data/outputs/slide_{1-4}.png
+- **Output:**
+  - Slides 1-5: 1024x1024 PNG (square format for Instagram feed)
+  - Story: 1080x1920 PNG (vertical 9:16 format for Link Sticker)
+- **Save to:** /data/outputs/slide_{1-5}.png + story.png
 
-### 3. Final Composition (Python Script)
+### 3. Telegram Delivery System
+**Problem Solved:** Native n8n Telegram node failed with `sendMediaGroup` for albums.
+
+**Solution:** HTTP Request node with multipart POST
+
+**Implementation:**
+```javascript
+// Manually construct JSON with attach://slide_X syntax
+// Map 6 binary files (slide_1...slide_5, story)
+// POST to Telegram Bot API with sendMediaGroup
+```
+
+**Delivery Format:**
+- **Message 1:** Photo album (6 images)
+  - Feed: slide_1.png through slide_5.png
+  - Story: story.png (9:16 background for Link Sticker)
+- **Message 2:** Text message
+  - Caption text
+  - "Cheat Sheet" with Amazon product name for quick lookup
+
+### 4. Final Composition (Python Script)
 **Script:** /data/scripts/composite.py
 **Execution:** 4 parallel Execute Command nodes
 
@@ -393,18 +461,21 @@ scp /home/dvayr/Projects_linux/nexus/scripts/composite.py didac@100.122.207.23:/
 2. **Get Topic** - Input node for topic selection
 3. **Topic Generator** - Parse topic data
 4. **Fact Generator** - Gemini generates verified fact
-5. **Content Engine** - Gemini creates full carousel JSON (MAIN NODE)
-6. **Image Prompt Optimizer** - Enhances prompts with brand guidelines
-7. **Gemini Image 1-4** - Generate AI images in parallel
-8. **Write File 1-4** - Save images to /data/outputs/
-9. **Code 1-4** - Build composite.py commands with proper escaping
-10. **Execute Command 1-4** - Run composite.py for each slide
+5. **Content Engine** - Gemini 3 Pro creates full carousel JSON + Amazon product (MAIN NODE)
+6. **Image Prompt Optimizer** - Enhances prompts with brand guidelines + anti-hallucination rules
+7. **Gemini Image 1-6** - Generate AI images in parallel (5 feed + 1 story background)
+8. **Write File 1-6** - Save images to /data/outputs/
+9. **Code 1-5** - Build composite.py commands with proper escaping
+10. **Execute Command 1-5** - Run composite.py for each feed slide
+11. **HTTP Request (Telegram)** - Send album (6 images) via multipart POST with sendMediaGroup
+12. **Telegram Message 2** - Send caption + Amazon product recommendation
 
 ### Execution Flow
-- 4 parallel paths (no merge node)
-- Each path processes one slide independently
-- No synchronization needed - slides can complete in any order
-- Final outputs appear in /data/outputs/final/ as they complete
+- 6 parallel image generation paths
+- 5 slides processed independently through composite.py
+- Story background kept as-is (no composition needed)
+- Final outputs: /data/outputs/final/slide_{1-5}_final.png + story.png
+- Delivered to Telegram as album for review and selection
 
 ---
 
@@ -446,9 +517,117 @@ Science | Psychology | Technology | History | Space | Nature
 
 ---
 
+## 💸 Monetization Strategy - Amazon Associates
+
+### Hybrid "Story Bridge" Method
+
+**Concept:** Use Stories as a conversion bridge between feed content and Amazon products.
+
+**Implementation:**
+
+1. **Content Generation:**
+   - Gemini 3 Pro includes `product_recommendation` field in JSON schema
+   - Suggests real Amazon book/product related to carousel topic
+   - Generates specific Story CTA text: "Want to learn more?..."
+
+2. **Publishing Flow:**
+   ```
+   18:30h → Post carousel to Feed (Attraction)
+       ↓
+   18:35h → Post Story with dark background + Amazon Link Sticker (Conversion)
+       ↓
+   Save Story to Highlights ("📚 Books")
+   ```
+
+3. **Link Generation:**
+   - Tool: **SiteStripe** (PC or Mobile Desktop view)
+   - Format: Short `amzn.to` links with `factsmind-21` affiliate tag
+   - Place link sticker on Story background (9:16 vertical image)
+
+4. **Bento.me Setup:**
+   - Dark Mode (black background image)
+   - Featured card: "📚 The Science Library"
+   - Links to curated Amazon book list
+
+### Revenue Expectations
+- **Early Phase (0-5K):** Minimal ($0-50/month)
+- **Growth Phase (5K-20K):** $50-200/month
+- **Established (20K-50K):** $200-500/month
+- **Authority (50K+):** $500-2K/month
+
+---
+
+## 📅 Daily Operational Procedures
+
+### Content Buffer Strategy (Critical)
+
+**3-Day Buffer Rule:** Always maintain 3 days of generated content saved in Telegram.
+
+**Purpose:**
+- Prevents last-minute technical failures
+- Allows time for content review and quality control
+- Provides flexibility for manual scheduling
+
+### Daily Publishing Routine (18:30 CET)
+
+**Time:** 18:30h CET (Mon-Sun)
+
+**Process:**
+1. **Select content** from Telegram buffer (3-day advance)
+2. **Post carousel** to Instagram feed
+3. **Add caption** (hook + CTA + hashtags in first comment)
+4. **Share to Stories** (within 5 minutes)
+   - Use Story background from Telegram
+   - Add Amazon Link Sticker
+   - Add poll/quiz sticker related to topic
+5. **Save Story** to "📚 Books" highlight
+6. **Initial engagement** (first 30 minutes)
+   - Respond to all comments immediately
+   - React to any shares or tags
+
+### Daily Engagement (15 minutes)
+
+**Timing:** Post-publishing or evening
+
+**Actions:**
+- Browse 5-10 similar accounts (psychology, science, facts)
+- Leave **valuable comments** (not generic "nice post!")
+- Like 10-15 posts in niche
+- ❌ **PROHIBITED:** Automatic comment bots
+- ✅ **ALLOWED:** Manual, thoughtful engagement only
+
+### Weekly Content Generation
+
+**Batch Generation:** Sunday or Monday
+
+**Process:**
+1. Run n8n workflow 7 times (1 week of content)
+2. Receive 7 albums in Telegram (42 images total)
+3. Review all carousels for quality
+4. Archive in Telegram for daily selection
+5. Generate Amazon links for each topic (use SiteStripe)
+
+### Instagram Profile Maintenance
+
+**Bio:** "The world is stranger than you think. 🧠 Unseen Science & History."
+
+**Link in Bio:** Bento.me (update monthly with new books)
+
+**Highlights:**
+- 📚 Books (Save all monetization Stories here)
+- 🧠 Best Of (Top-performing carousels)
+- ❓ FAQ (Common questions about topics)
+
+**Story Schedule:**
+- **09:00h:** Morning engagement (poll/question about upcoming topic)
+- **19:00h:** Re-share feed post with quiz sticker
+- **22:00h:** Behind-the-scenes or teaser for next day
+
+---
+
 ## Next Steps
 
-### Immediate (Ready to Implement)
+### Immediate (In Production)
 - [ ] Instagram API integration for automated posting
 - [ ] Caption generation from carousel metadata
 - [ ] Hashtag optimization based on performance
@@ -522,8 +701,34 @@ docker exec nexus-n8n python3 /data/scripts/composite.py --help
 
 ---
 
-**Status: ✅ PRODUCTION READY**
+## 🚀 Production Status
 
-All visual improvements complete. Workflow generates professional Instagram carousels with proper branding, typography, and visual effects. Ready for Instagram API integration.
+**Status: 🟢 LIVE IN PRODUCTION**
 
-**Last Updated:** November 19, 2025
+**Launch Date:** November 19, 2025
+**Platform:** Instagram (@factsmind)
+**Current:** Phase 1 - Foundation (0-1K followers)
+
+### What's Working
+✅ Gemini 3 Pro Preview content generation with anti-hallucination rules
+✅ 5-slide carousel + Story background (6 images total)
+✅ Python composition with professional visual effects
+✅ Telegram delivery via HTTP multipart POST
+✅ Amazon Associates integration (product recommendations)
+✅ Daily posting at 18:30 CET
+✅ 3-day content buffer strategy
+✅ Story monetization bridge to Amazon products
+
+### In Production
+- Daily manual posting to Instagram
+- Story sharing with Amazon Link Stickers
+- 15-minute daily engagement routine
+- Weekly batch content generation (7 carousels)
+- Bento.me link management
+
+### Next Phase Triggers
+- Reach 1,000 followers → Add TikTok/YouTube Shorts
+- Engagement rate >3% for 2 weeks → Scale to 2 posts/day
+- Build 30+ day content backlog → Automation ready
+
+**Last Updated:** November 19, 2025 (Production Launch Day)
