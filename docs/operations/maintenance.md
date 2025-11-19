@@ -164,8 +164,6 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now backup-sync.timer
 ```
 
-**Note:** Full image backup (dd_full_image.sh) has been disabled to save disk space (was 436GB). See `/mnt/backup/RESTORE_INSTRUCTIONS.md` for config-based restore procedures.
-
 ---
 ## 5. Restore quick steps (high-level)
 - To restore postgres DB:

@@ -144,8 +144,7 @@ Context file for Claude Code when working with the Nexus automation platform.
 │   └── final/                      # Generated carousel slides
 └── scripts/
     ├── backup_sync.sh              # Comprehensive config backup
-    ├── pg_backup.sh                # PostgreSQL dump
-    └── dd_full_image.sh            # Full image (disabled)
+    └── pg_backup.sh                # PostgreSQL dump
 ```
 
 **Docker volumes (managed):**

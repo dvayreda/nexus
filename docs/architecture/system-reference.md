@@ -553,18 +553,6 @@ sudo docker exec -t postgres pg_dump -U faceless n8n | gzip > "$OUT"
 sha256sum "$OUT" > "${OUT}.sha256"
 ```
 
-### dd_full_image.sh (weekly full image)
-Save as `/srv/scripts/dd_full_image.sh`
-```bash
-#!/usr/bin/env bash
-set -euo pipefail
-IMG="/mnt/backup/images/nexus-$(date +%F).img"
-mkdir -p /mnt/backup/images
-sudo dd if=/dev/sda of="$IMG" bs=4M conv=sync,noerror status=progress
-sha256sum "$IMG" > "${IMG}.sha256"
-# optional compression afterwards (careful with space)
-```
-
 ---
 ## 3. systemd timers (replace cron) examples
 ### /etc/systemd/system/backup-sync.service
@@ -604,10 +592,6 @@ gunzip -c /mnt/backup/db/postgres_n8n_2025-11-09.sql.gz | sudo docker exec -i po
 - To restore files:
 ```bash
 rsync -av /mnt/backup/daily/2025-11-09/ /srv/outputs/
-```
-- To restore full image (careful):
-```bash
-sudo dd if=/mnt/backup/images/nexus-2025-11-09.img of=/dev/sda bs=4M conv=sync,noerror status=progress
 ```
 
 ---
@@ -702,8 +686,7 @@ Recommended repository structure (root):
 ├- docs/
 ├- scripts/
 │  ├- backup_sync.sh
-│  ├- pg_backup.sh
-│  └- dd_full_image.sh
+│  └- pg_backup.sh
 ├- infra/
 │  ├- docker-compose.yml
 │  └- nexus-stack.service

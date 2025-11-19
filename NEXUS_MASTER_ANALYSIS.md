@@ -988,7 +988,7 @@ limiter.check_rate_limit("groq", max_per_hour=100)
 - [ ] Add 14 helper scripts to repository (pi/, wsl2/, backup/)
 - [ ] Add Samba config to repo
 - [ ] Document systemd timers
-- [ ] Fix dd_full_image.sh disk bug (or delete)
+- [x] Fix dd_full_image.sh disk bug (or delete) - Deleted unused script
 - [ ] Create deployment checklist
 
 **Day 3-4: Testing Foundation**
