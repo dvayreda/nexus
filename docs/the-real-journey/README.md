@@ -83,7 +83,7 @@ This book gets written AS WE GO:
 - Failure rates
 
 **No Bullshit:**
-- If something takes 3 months to debug, we say it
+- If something takes weeks to debug, we say it
 - If revenue is $0 for 6 months, we document it
 - If we pivot, we explain why
 - If we fail, we analyze it
@@ -174,7 +174,7 @@ See [INDEX.md](./INDEX.md) for the full book structure.
 
 **Revenue:** $0 (infrastructure phase)
 **Followers:** [Track in metrics]
-**Time Invested:** ~3 months (mostly debugging)
+**Time Invested:** ~18 days and counting
 
 ---
 

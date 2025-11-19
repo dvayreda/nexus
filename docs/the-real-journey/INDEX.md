@@ -13,7 +13,7 @@ Living book structure. Sections get written as we live them.
 
 ### Chapter 2: Infrastructure Hell
 - `02-infrastructure/raspberry-pi-setup.md` - Getting the Pi running 24/7
-- `02-infrastructure/debugging-chronicles.md` - 3 months of "why won't this work?"
+- `02-infrastructure/debugging-chronicles.md` - The "why won't this work?" chronicles
 - `02-infrastructure/docker-n8n-postgres.md` - The stack that wouldn't cooperate
 - `02-infrastructure/backup-and-logs.md` - Making it manageable
 - `02-infrastructure/lessons-learned.md` - What we'd do differently

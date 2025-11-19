@@ -33,7 +33,7 @@ Every significant decision documented with context, alternatives, and outcomes.
 - Infrastructure makes everything else easier
 - Can't scale manual processes
 
-**Outcome:** ⏳ *In progress - carousel automation working, took 3 months*
+**Outcome:** ⏳ *In progress - carousel automation working, ~18 days so far*
 **Would We Do It Again?** ⏳ *TBD - ask me in 6 months*
 
 ---
@@ -113,7 +113,7 @@ Every significant decision documented with context, alternatives, and outcomes.
 - Debugging can't be rushed
 - Each platform gets faster (learning compounds)
 
-**Outcome:** ⏳ *Carousel took 3 months but it's solid*
+**Outcome:** ⏳ *Carousel took ~18 days but it's solid*
 **Trade-off:** Slower to market, but better foundation
 **Would We Do It Again?** ⏳ *Probably - depends on revenue results*
 
