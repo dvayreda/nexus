@@ -2,7 +2,7 @@ FROM n8nio/n8n:latest
 
 USER root
 
-# Install Python3, Pillow, and ffmpeg for media processing
+# Install Python3, Pillow, ffmpeg, and sox for media processing
 RUN apk add --no-cache \
     python3 \
     py3-pip \
@@ -10,6 +10,7 @@ RUN apk add --no-cache \
     jpeg-dev \
     zlib-dev \
     freetype-dev \
-    ffmpeg
+    ffmpeg \
+    sox
 
 USER node
