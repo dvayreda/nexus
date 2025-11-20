@@ -8,9 +8,10 @@ Context file for Claude Code when working with the Nexus automation platform.
 
 **Current Production System:** FactsMind carousel generator
 - Platform: Instagram (1-3 posts/day)
-- Content: 4-slide educational carousels (science, psychology, tech, history, space)
-- Pipeline: Gemini (fact + content generation + AI images) → Python/Pillow (pure Python composition) → Manual Instagram upload
+- Content: 5-slide educational carousels (science, psychology, tech, history, space) + Story background
+- Pipeline: Gemini (fact + content generation + AI images) → Python/Pillow (pure Python composition) → Telegram delivery
 - Status: ✅ Production ready with complete visual polish (Nov 2025)
+- Repository: https://github.com/dvayreda/factsmind (separate from Nexus)
 
 **Infrastructure:**
 - Raspberry Pi 4 (4GB RAM, 2GB swap)
@@ -56,7 +57,7 @@ Context file for Claude Code when working with the Nexus automation platform.
 
 **Map these network shares in Windows:**
 - `\\100.122.207.23\nexus-docker` → `/srv/docker/` (docker-compose.yml, Dockerfiles)
-- `\\100.122.207.23\nexus-projects` → `/srv/projects/` (faceless_prod scripts/templates)
+- `\\100.122.207.23\nexus-projects` → `/srv/projects/` (factsmind application files)
 - `\\100.122.207.23\nexus-scripts` → `/srv/scripts/` (backup scripts)
 - `\\100.122.207.23\nexus-outputs` → `/srv/outputs/` (generated carousels)
 
@@ -135,10 +136,13 @@ Context file for Claude Code when working with the Nexus automation platform.
 │   ├── docker-compose.yml          # Stack definition
 │   └── n8n.Dockerfile              # Custom n8n image with Python
 ├── projects/
-│   ├── faceless_prod/
-│   │   ├── scripts/composite.py    # Python carousel composition
-│   │   └── templates/              # Figma template PNGs (2160x2700)
-│   └── nexus/                      # Git repo clone
+│   ├── factsmind/                  # FactsMind application (separate repo)
+│   │   ├── scripts/                # composite.py, factsmind_logo.png
+│   │   ├── assets/fonts/           # Montserrat typography
+│   │   └── docs/                   # Project documentation
+│   ├── faceless_prod -> factsmind  # Backward compatibility symlink
+│   ├── faceless_prod.OLD/          # Archived (remove after 1 week)
+│   └── nexus/                      # Nexus git repo clone
 ├── outputs/
 │   └── final/                      # Generated carousel slides
 └── scripts/
@@ -154,8 +158,8 @@ Context file for Claude Code when working with the Nexus automation platform.
 
 **Volume mounts (in n8n container):**
 - `/data/outputs` → `/srv/outputs` (AI images + final composites)
-- `/data/scripts` → `/srv/projects/faceless_prod/scripts` (composite.py, factsmind_logo.png)
-- `/data/fonts` → `/srv/projects/faceless_prod/fonts` (Montserrat typography)
+- `/data/scripts` → `/srv/projects/factsmind/scripts` (composite.py, factsmind_logo.png)
+- `/data/fonts` → `/srv/projects/factsmind/assets/fonts` (Montserrat typography)
 
 ---
 
@@ -383,9 +387,10 @@ nexus-git-push "fix: Update config"
 
 **Detailed documentation:**
 - **Setup:** `docs/setup/quickstart.md` - Complete Pi setup from scratch
-- **FactsMind project:** `docs/projects/factsmind.md` - Build log and implementation details
+- **FactsMind project:** https://github.com/dvayreda/factsmind - Separate repository with implementation details
 - **Maintenance:** `docs/operations/maintenance.md` - Backup/restore procedures, troubleshooting
 - **Architecture:** `docs/architecture/system-reference.md` - Deep technical reference
+- **Migration:** `MIGRATION_GUIDE.md` - Repository split documentation (Nov 2025)
 
 **Root README:** `/README.md` - Project overview and quick links
 
