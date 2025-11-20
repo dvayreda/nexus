@@ -11,6 +11,14 @@ Nexus is a complete automation workstation for generating, rendering, and publis
 🤖 **AI Stack:** Google Gemini (content + images) + Python/Pillow (pure Python rendering)
 🎨 **Design:** Montserrat typography, dark navy + cyan glow, professional effects
 
+## Projects Using Nexus
+
+### FactsMind (Migrated)
+Educational Instagram carousel generator - now in separate repository.
+
+**Repository:** [dvayreda/factsmind](https://github.com/dvayreda/factsmind)
+**Status:** Production (runs on Nexus platform)
+
 ## What It Does
 
 1. **Generates** educational content using Google Gemini AI
