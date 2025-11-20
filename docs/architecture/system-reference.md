@@ -173,19 +173,32 @@ Record results in the Hardware doc for reference.
 ---
 ## 7. Folder layout (persistent)
 ```text
-/srv/projects/faceless_dev
-/srv/projects/faceless_prod
-/srv/outputs
-/srv/temp
-/srv/db
-/srv/n8n_data
-/mnt/backup
+/srv/projects/
+├── nexus/                          # Main repository
+├── factsmind/
+│   ├── scripts/                    # Python processing scripts
+│   └── assets/                     # Permanent assets (Samba accessible)
+│       ├── audio/                  # Permanent audio files
+│       ├── fonts/                  # Typography (Montserrat, Poppins)
+│       ├── images/                 # Permanent images
+│       └── logos/                  # Brand assets
+/srv/outputs/                       # Generated content (daily rotation)
+/srv/bin/                          # Static binaries (ffmpeg, ffprobe)
+/mnt/backup/                       # External backup drive
 ```
 Set ownership to `didac`:
 ```bash
-sudo mkdir -p /srv/projects/faceless_dev /srv/projects/faceless_prod /srv/outputs /srv/temp /srv/db /srv/n8n_data
+sudo mkdir -p /srv/projects/{nexus,factsmind/{scripts,assets/{audio,fonts,images,logos}}} /srv/outputs /srv/bin
 sudo chown -R didac:didac /srv
 ```
+
+### Asset Management
+Permanent assets are stored in `/srv/projects/factsmind/assets/` and accessible via:
+- **Samba share:** `\\100.122.207.23\factsmind-assets`
+- **Container mount:** `/data/assets/` (inside n8n)
+- **Usage:** Logos, fonts, intro music, brand guidelines
+
+See [Assets Management Guide](../operations/assets-management.md) for details.
 
 ---
 ## 8. Boot and service order

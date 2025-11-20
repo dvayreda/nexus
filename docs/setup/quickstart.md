@@ -106,12 +106,31 @@ sudo chown -R didac:didac /mnt/backup
 
 ```bash
 # Create standard directories
-sudo mkdir -p /srv/{projects/{faceless_dev,faceless_prod},outputs,temp,db,n8n_data,scripts}
+sudo mkdir -p /srv/{projects/{nexus,factsmind/{scripts,assets/{audio,fonts,images,logos}}},outputs,bin}
 sudo chown -R didac:didac /srv
 
 # Verify
 ls -la /srv
+ls -la /srv/projects/factsmind/assets/
+
+# This creates:
+# /srv/projects/nexus/           - Main repository
+# /srv/projects/factsmind/        - FactsMind project
+#   ├── scripts/                  - Python processing scripts
+#   └── assets/                   - Permanent assets (Samba accessible)
+#       ├── audio/                - Intro music, sound effects
+#       ├── fonts/                - Typography files
+#       ├── images/               - Permanent images
+#       └── logos/                - Brand assets
+# /srv/outputs/                   - Generated content (daily rotation)
+# /srv/bin/                       - Static binaries (ffmpeg, ffprobe)
 ```
+
+### Asset Management
+See [Assets Management Guide](../operations/assets-management.md) for details on:
+- How to access assets via Samba network share
+- Uploading logos, fonts, audio files remotely
+- Path mappings for n8n workflows
 
 ---
 
