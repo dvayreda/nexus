@@ -24,6 +24,32 @@
 
 ---
 
+## QUICK START: DUAL CLI COORDINATION
+
+**Recommended Setup:**
+
+1. **Open WSL2 CLI** (Execution):
+   ```bash
+   cd /home/dvayr/Projects_linux/nexus
+   git checkout claude/create-migration-guide-01UvbBZTVAzaaJQc3xFet7BK
+   git pull
+   # Then follow this guide step-by-step
+   ```
+
+2. **Keep GitHub CLI open** (Monitoring - this current session):
+   - I can read files from the repository
+   - I can monitor your commits for progress
+   - I can answer questions about the guide
+   - I **cannot** execute SSH commands or access production
+   - I **cannot** run the migration for you
+
+**Coordination Flow:**
+- WSL2 CLI executes → commits with metadata → GitHub CLI monitors → repeat
+
+See **Section 4** for detailed coordination protocol.
+
+---
+
 ## SECTION 0: PRE-FLIGHT CHECKLIST
 
 **RUN BEFORE STARTING MIGRATION** - Verify all prerequisites exist on production server.
@@ -225,45 +251,100 @@ git push --force origin main
 
 ---
 
-## SECTION 4: COORDINATION PROTOCOL
+## SECTION 4: COORDINATION PROTOCOL - DUAL CLI SETUP
 
-### Web UI and CLI Working Together
+### Recommended Setup: WSL2 CLI + GitHub CLI
 
-**SAFE (Can work simultaneously):**
-- Reading documentation
-- Viewing logs (read-only)
-- Monitoring (Netdata, health checks)
-- Checking git history
+**Two Claude Code CLI instances working together:**
 
-**DANGEROUS (Must coordinate):**
-- File moves/renames → CLI only
-- Git commits → One at a time
-- Production deployment → CLI leads, Web verifies
-- Docker changes → CLI only
+1. **WSL2 CLI (Execution Lead)** - Runs on `/home/dvayr/Projects_linux/nexus`
+   - Has SSH access to Raspberry Pi
+   - Executes all migration commands
+   - Creates backups
+   - Deploys to production
+   - Runs verification tests
+   - Handles emergency rollback if needed
 
-### Communication via Git Commits
+2. **GitHub CLI (Coordinator)** - Runs from any location with GitHub access
+   - Monitors migration progress via git commits
+   - Creates GitHub issues for tracking
+   - Can read files from repository
+   - Reviews documentation
+   - Cannot execute SSH/production commands
+   - Provides guidance and verification
 
-**Format:**
+### Division of Responsibilities
+
+**WSL2 CLI does:**
+- ✅ All SSH commands to Raspberry Pi
+- ✅ All git operations (commit, push, checkout)
+- ✅ Docker operations via SSH
+- ✅ File operations (sed, cp, mv)
+- ✅ Backup creation and verification
+- ✅ Emergency rollback execution
+
+**GitHub CLI does:**
+- ✅ Monitor commits for migration metadata
+- ✅ Read and analyze repository files
+- ✅ Provide command verification
+- ✅ Track migration progress
+- ✅ Answer questions about the guide
+- ❌ Cannot execute SSH commands
+- ❌ Cannot access production server
+- ❌ Cannot run local file operations
+
+### Communication Protocol
+
+**WSL2 CLI commits with metadata after each phase:**
 ```
 <type>: <subject>
 
 <body>
 
-Migration-Phase: <phase>
-Migration-Status: <status>
+Migration-Phase: <phase-name>
+Migration-Status: Complete|In-Progress|Failed
 Rollback-Point: 8afde4dc9cc0f65a138caa7b558ca900bd9d4b8b
 Tested: yes/no
 ```
 
-### Handoff Markers
-
+**GitHub CLI monitors by:**
 ```bash
-# CLI signals ready
-touch /tmp/migration-cli-ready.flag
+# Check latest commit
+git log -1 --format="%B"
 
-# Web signals verified
-touch /tmp/migration-web-verified.flag
+# Parse migration metadata
+git log --grep="Migration-Phase" -1
 ```
+
+### Workflow Example
+
+1. **WSL2 CLI:** Runs Section 0 pre-flight checklist
+2. **WSL2 CLI:** Commits result: "chore: Pre-flight checklist passed"
+3. **GitHub CLI:** Sees commit, confirms ready for Section 1
+4. **WSL2 CLI:** Runs Section 1 backups
+5. **WSL2 CLI:** Commits: "backup: Pre-migration backups complete"
+6. **GitHub CLI:** Verifies backup metadata in commit
+7. Continue pattern through all phases...
+
+### When Things Go Wrong
+
+**If GitHub CLI detects issues:**
+- Cannot directly intervene
+- Alerts user to check WSL2 CLI output
+- Provides rollback commands for WSL2 CLI to execute
+
+**If WSL2 CLI encounters errors:**
+- Commits failure state
+- Runs emergency rollback: `./scripts/emergency-rollback.sh`
+- GitHub CLI monitors rollback commit
+
+### Alternative: Single CLI (WSL2 Only)
+
+You can also run the entire migration from WSL2 CLI alone:
+- Follow the guide step-by-step
+- Commit after each phase
+- No coordination needed
+- Simpler but less oversight
 
 ---
 
