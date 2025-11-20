@@ -81,7 +81,7 @@ services:
       - /srv/outputs:/data/outputs
       - /srv/projects/nexus:/data/workflows
       - /srv/projects/factsmind/scripts:/data/scripts
-      - /srv/projects/factsmind/assets/fonts:/data/fonts
+      - /srv/projects/factsmind/assets:/data/assets
       - /srv/bin:/data/bin
     depends_on:
       postgres:
