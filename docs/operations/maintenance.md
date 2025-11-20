@@ -17,7 +17,36 @@ nexus host environment and Dockerized services. Focus on backups, verification, 
 - Check Netdata dashboard for CPU, memory, disk IO anomalies.
 - `sudo docker ps` to ensure services are running.
 - `df -h` to ensure backup disk has free space.
-- Check `/var/log/backup_sync.log` for recent rsync errors.
+- Check memory watchdog status: `systemctl status memory-watchdog.timer`
+- Verify swap usage: `free -h`
+
+---
+## 1.1 System Resilience Features
+
+**Memory Protection (Active)**
+- **Memory Watchdog:** Monitors RAM every 30 seconds, stops n8n if <200MB, reboots if <100MB
+- **Hardware Watchdog:** BCM2835 watchdog forces reboot if system freezes >60 seconds
+- **4GB Swap:** Emergency overflow for memory-intensive operations (video rendering)
+- **Persistent Logging:** Crash logs saved to disk for analysis
+
+**Remote Recovery**
+For remote power management when away, see: [Remote Power Management Guide](remote-power-management.md)
+
+Quick status check:
+```bash
+# Memory watchdog
+systemctl status memory-watchdog.timer
+sudo /usr/local/bin/memory-watchdog.sh  # Manual test
+
+# Hardware watchdog
+systemctl show | grep RuntimeWatchdogUSec  # Should show 1min
+
+# Swap
+free -h                                    # Should show 4GB swap
+
+# Persistent logs
+sudo journalctl --disk-usage               # Should show logs stored on disk
+```
 
 ---
 ## 2. Backup Strategy
