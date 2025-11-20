@@ -80,8 +80,8 @@ services:
       - n8n_data:/home/node/.n8n
       - /srv/outputs:/data/outputs
       - /srv/projects/nexus:/data/workflows
-      - /srv/projects/faceless_prod/scripts:/data/scripts
-      - /srv/projects/faceless_prod/fonts:/data/fonts
+      - /srv/projects/factsmind/scripts:/data/scripts
+      - /srv/projects/factsmind/assets/fonts:/data/fonts
     depends_on:
       postgres:
         condition: service_healthy
