@@ -396,6 +396,146 @@ nexus-git-push "fix: Update config"
 
 ---
 
+## Working with Multiple Repositories (IMPORTANT)
+
+### Repository Architecture
+
+**Nexus** (Infrastructure) + **FactsMind** (Application) = Two separate Git repositories
+
+```
+Your PC (WSL2):
+├── /home/dvayr/Projects_linux/nexus/      # Infrastructure repo
+└── /home/dvayr/Projects_linux/factsmind/  # Application repo
+     ↓ Both deployed to ↓
+Raspberry Pi:
+├── /srv/projects/factsmind/               # FactsMind application
+└── /srv/docker/                            # Nexus infrastructure
+```
+
+### When to Work in Which Repository
+
+**Work in Nexus (`/home/dvayr/Projects_linux/nexus/`):**
+- ✅ Modifying docker-compose.yml or n8n.Dockerfile
+- ✅ Updating helper scripts (nexus-*.sh)
+- ✅ Changing backup procedures or monitoring
+- ✅ Adding new Docker services
+- ✅ Platform documentation updates
+- ✅ Infrastructure troubleshooting
+
+**Work in FactsMind (`/home/dvayr/Projects_linux/factsmind/`):**
+- ✅ Modifying composite.py (carousel generation logic)
+- ✅ Updating visual styles (colors, fonts, layouts)
+- ✅ Changing AI prompts or content rules
+- ✅ Adding new slide types or effects
+- ✅ Application documentation updates
+- ✅ Testing carousel generation
+
+**Work in BOTH (Coordination Required):**
+- ⚠️ Adding new Python dependencies (FactsMind requires → Nexus provides)
+- ⚠️ Changing Python version (update FactsMind VERSION.txt → update Nexus Dockerfile)
+- ⚠️ Modifying volume mount paths (update Nexus docker-compose → document in FactsMind)
+
+### Using Multiple Working Directories with Claude
+
+**Recommended workflow:**
+```bash
+# Launch Claude from Nexus (infrastructure focus)
+cd /home/dvayr/Projects_linux/nexus
+claude  # or your Claude command
+
+# Then add FactsMind as additional working directory when needed
+# Claude can access both repos simultaneously
+```
+
+**Alternative: Launch from current work focus**
+```bash
+# For infrastructure work
+cd /home/dvayr/Projects_linux/nexus && claude
+
+# For application work
+cd /home/dvayr/Projects_linux/factsmind && claude
+```
+
+### AI Context Strategy
+
+**Single Source: This File (Nexus claude.md)**
+- This file contains comprehensive context for both infrastructure AND applications
+- FactsMind repo does NOT have separate claude.md (kept simple)
+- Always launch Claude with access to Nexus repo for full context
+
+**FactsMind Documentation:**
+- [FactsMind Deployment Guide](https://github.com/dvayreda/factsmind/blob/main/docs/deployment.md)
+- [FactsMind Development Guide](https://github.com/dvayreda/factsmind/blob/main/docs/development.md)
+- [FactsMind Requirements](https://github.com/dvayreda/factsmind/blob/main/VERSION.txt)
+
+### Cross-Repository Updates
+
+**Scenario 1: Application Code Change (No Infrastructure Impact)**
+```bash
+# 1. Work in FactsMind repo
+cd /home/dvayr/Projects_linux/factsmind
+# Edit composite.py
+git add scripts/composite.py
+git commit -m "feat: Add new visual effect"
+git push origin main
+
+# 2. Deploy to production
+ssh didac@100.122.207.23 'cd /srv/projects/factsmind && git pull'
+# No restart needed - scripts read on each execution
+```
+
+**Scenario 2: New Dependency (Requires Both Repos)**
+```bash
+# 1. Update FactsMind VERSION.txt and requirements.txt
+cd /home/dvayr/Projects_linux/factsmind
+# Edit VERSION.txt: pillow>=11.5
+# Commit and push
+
+# 2. Update Nexus n8n.Dockerfile
+cd /home/dvayr/Projects_linux/nexus
+# Edit infra/n8n.Dockerfile: py3-pillow>=11.5
+# Commit and push
+
+# 3. Rebuild and deploy
+ssh didac@100.122.207.23 'cd /srv/docker && sudo docker compose build n8n && sudo docker compose up -d n8n'
+```
+
+**Scenario 3: Infrastructure Change (May Affect Application)**
+```bash
+# 1. Update Nexus infrastructure
+cd /home/dvayr/Projects_linux/nexus
+# Edit docker-compose.yml
+git commit -m "refactor: Update volume mount structure"
+git push
+
+# 2. Check if FactsMind needs documentation updates
+cd /home/dvayr/Projects_linux/factsmind
+# Update docs/deployment.md if paths changed
+git commit -m "docs: Update for new volume structure"
+git push
+
+# 3. Deploy coordinated changes
+# Deploy Nexus first, then FactsMind
+```
+
+### Keeping Repositories in Sync
+
+**FactsMind depends on Nexus:**
+- Python version (specified in n8n.Dockerfile)
+- Pillow version (installed in Docker image)
+- Volume mount paths (defined in docker-compose.yml)
+
+**Check compatibility:**
+```bash
+# FactsMind VERSION.txt should match Nexus capabilities
+cat /home/dvayr/Projects_linux/factsmind/VERSION.txt
+# Compare with:
+grep "python" /home/dvayr/Projects_linux/nexus/infra/n8n.Dockerfile
+grep "pillow" /home/dvayr/Projects_linux/nexus/infra/n8n.Dockerfile
+```
+
+---
+
 ## Development Notes
 
 **Git workflow:**
