@@ -87,10 +87,20 @@ verify_backup_integrity() {
         log_info "✓ Docker volumes OK" || \
         { log_error "✗ Volumes backup FAILED!"; exit 1; }
 
-    # Check files backup
+    # Check application files backup
     $SSH_WRAPPER "[ -f '$BACKUP_DIR/srv/projects/faceless_prod/scripts/composite.py' ]" && \
-        log_info "✓ Application files OK" || \
-        { log_error "✗ Files backup FAILED!"; exit 1; }
+        log_info "✓ composite.py backup OK" || \
+        { log_error "✗ composite.py backup FAILED!"; exit 1; }
+
+    # Check fonts backup
+    $SSH_WRAPPER "[ -d '$BACKUP_DIR/srv/projects/faceless_prod/fonts' ]" && \
+        log_info "✓ Fonts backup OK" || \
+        log_warn "⚠ Fonts backup not found (may not exist in backup)"
+
+    # Check logo backup
+    $SSH_WRAPPER "[ -f '$BACKUP_DIR/srv/projects/faceless_prod/scripts/factsmind_logo.png' ]" && \
+        log_info "✓ Logo backup OK" || \
+        log_warn "⚠ Logo backup not found (may not exist in backup)"
 
     BACKUP_SIZE=$($SSH_WRAPPER "du -sh $BACKUP_DIR | cut -f1")
     log_info "Total backup size: $BACKUP_SIZE"
@@ -164,6 +174,13 @@ verify_health() {
     else
         log_error "✗ composite.py NOT accessible!"
         exit 1
+    fi
+
+    # Check logo accessible
+    if $SSH_WRAPPER 'docker exec nexus-n8n ls /data/scripts/factsmind_logo.png' > /dev/null 2>&1; then
+        log_info "✓ Logo accessible"
+    else
+        log_warn "⚠ Logo NOT accessible (carousel CTA may fail)"
     fi
 
     # Check fonts accessible

@@ -24,6 +24,71 @@
 
 ---
 
+## SECTION 0: PRE-FLIGHT CHECKLIST
+
+**RUN BEFORE STARTING MIGRATION** - Verify all prerequisites exist on production server.
+
+```bash
+# Verify fonts exist on Raspberry Pi
+ssh didac@100.122.207.23 << 'EOF'
+echo "=== PRE-FLIGHT CHECKLIST ==="
+
+# Check 1: Fonts directory
+if [ -d "/srv/projects/faceless_prod/fonts" ]; then
+    echo "✓ Fonts directory exists"
+    ls -lh /srv/projects/faceless_prod/fonts/Montserrat-*.ttf 2>/dev/null || echo "✗ ERROR: Montserrat fonts missing!"
+else
+    echo "✗ ERROR: Fonts directory missing at /srv/projects/faceless_prod/fonts"
+    echo "  Action required: Upload Montserrat fonts before migration"
+fi
+
+# Check 2: Logo file
+if [ -f "/srv/projects/faceless_prod/scripts/factsmind_logo.png" ]; then
+    echo "✓ Logo file exists"
+    ls -lh /srv/projects/faceless_prod/scripts/factsmind_logo.png
+else
+    echo "✗ ERROR: Logo missing at /srv/projects/faceless_prod/scripts/factsmind_logo.png"
+    echo "  Action required: Upload logo before migration"
+fi
+
+# Check 3: composite.py script
+if [ -f "/srv/projects/faceless_prod/scripts/composite.py" ]; then
+    echo "✓ composite.py exists"
+else
+    echo "✗ ERROR: composite.py missing!"
+fi
+
+# Check 4: Disk space on /mnt/backup
+BACKUP_SPACE=$(df -h /mnt/backup | awk 'NR==2 {print $4}')
+echo "✓ Backup space available: $BACKUP_SPACE"
+
+# Check 5: Docker running
+if docker ps > /dev/null 2>&1; then
+    echo "✓ Docker is running"
+    docker ps --format "table {{.Names}}\t{{.Status}}" | grep nexus
+else
+    echo "✗ ERROR: Docker not accessible"
+fi
+
+# Check 6: n8n accessible
+if docker exec nexus-n8n echo "OK" > /dev/null 2>&1; then
+    echo "✓ n8n container accessible"
+else
+    echo "✗ ERROR: Cannot access nexus-n8n container"
+fi
+
+echo "=== PRE-FLIGHT COMPLETE ==="
+echo ""
+echo "⚠️  DO NOT PROCEED if any checks failed!"
+echo "   Fix issues first, then re-run this checklist."
+EOF
+```
+
+**If all checks pass ✓** → Proceed to Section 1
+**If any checks fail ✗** → Fix issues first, DO NOT migrate
+
+---
+
 ## SECTION 1: PRE-MIGRATION BACKUPS
 
 ### 1.1 Create Complete Backup (BEFORE ANY CHANGES)
@@ -295,16 +360,35 @@ ssh didac@100.122.207.23 << 'EOF'
 cd /srv/projects
 git clone https://github.com/dvayreda/factsmind.git
 
-# Copy assets
-mkdir -p factsmind/assets/fonts
-cp /srv/projects/faceless_prod/fonts/* factsmind/assets/fonts/
-ls -la factsmind/
+# Copy assets (fonts and logo)
+mkdir -p factsmind/assets/fonts factsmind/scripts
+cp /srv/projects/faceless_prod/fonts/* factsmind/assets/fonts/ 2>/dev/null || echo "Warning: No fonts found"
+cp /srv/projects/faceless_prod/scripts/*.png factsmind/scripts/ 2>/dev/null || echo "Warning: No logo found"
+
+# Verify critical files
+echo "=== PRE-DEPLOYMENT VERIFICATION ==="
+ls -lh factsmind/assets/fonts/Montserrat-*.ttf || echo "ERROR: Fonts missing!"
+ls -lh factsmind/scripts/factsmind_logo.png || echo "ERROR: Logo missing!"
 EOF
 
-# Update docker-compose.yml
+# Update docker-compose.yml (CRITICAL: Order matters!)
 cd /home/dvayr/Projects_linux/nexus
-sed -i 's|/srv/projects/faceless_prod/scripts|/srv/projects/factsmind/scripts|g' infra/docker-compose.yml
-sed -i 's|/srv/projects/faceless_prod|/srv/projects/factsmind/assets|g' infra/docker-compose.yml
+
+# Backup original
+cp infra/docker-compose.yml infra/docker-compose.yml.backup
+
+# 1. Update scripts path
+sed -i 's|/srv/projects/faceless_prod/scripts:/data/scripts|/srv/projects/factsmind/scripts:/data/scripts|g' infra/docker-compose.yml
+
+# 2. Remove templates line (FactsMind doesn't use templates)
+sed -i '/faceless_prod\/templates:\/data\/templates/d' infra/docker-compose.yml
+
+# 3. Add fonts mount (CRITICAL for carousel generation)
+sed -i '/factsmind\/scripts:\/data\/scripts/a\      - /srv/projects/factsmind/assets/fonts:/data/fonts' infra/docker-compose.yml
+
+# Verify changes
+echo "=== DOCKER-COMPOSE.YML CHANGES ==="
+diff -u infra/docker-compose.yml.backup infra/docker-compose.yml || true
 
 # Deploy
 scp infra/docker-compose.yml didac@100.122.207.23:/srv/docker/
@@ -326,15 +410,40 @@ EOF
 # Test n8n access
 curl http://100.122.207.23:5678/healthz
 
-# Test paths
+# Test critical paths inside container
 ssh didac@100.122.207.23 << 'EOF'
-docker exec nexus-n8n ls -la /data/scripts/composite.py
-docker exec nexus-n8n ls -la /data/assets/fonts/
-docker exec nexus-n8n python3 -c "from PIL import Image; print('OK')"
+echo "=== CONTAINER VERIFICATION ==="
+
+# 1. Verify composite.py script
+docker exec nexus-n8n ls -la /data/scripts/composite.py || echo "ERROR: composite.py missing!"
+
+# 2. Verify logo file
+docker exec nexus-n8n ls -la /data/scripts/factsmind_logo.png || echo "ERROR: Logo missing!"
+
+# 3. Verify fonts directory and files
+docker exec nexus-n8n ls -la /data/fonts/ || echo "ERROR: Fonts directory missing!"
+docker exec nexus-n8n ls /data/fonts/Montserrat-ExtraBold.ttf || echo "ERROR: ExtraBold font missing!"
+docker exec nexus-n8n ls /data/fonts/Montserrat-Regular.ttf || echo "ERROR: Regular font missing!"
+docker exec nexus-n8n ls /data/fonts/Montserrat-SemiBold.ttf || echo "ERROR: SemiBold font missing!"
+
+# 4. Verify Python dependencies
+docker exec nexus-n8n python3 -c "from PIL import Image, ImageFont; print('✓ PIL OK')"
+
+# 5. Test font loading
+docker exec nexus-n8n python3 << 'PYTHON'
+from PIL import ImageFont
+try:
+    font = ImageFont.truetype("/data/fonts/Montserrat-ExtraBold.ttf", 48)
+    print("✓ Font loading OK")
+except Exception as e:
+    print(f"ERROR: Font loading failed: {e}")
+PYTHON
+
+echo "=== VERIFICATION COMPLETE ==="
 EOF
 
 # Manual: Test FactsMind workflow in n8n UI
-# Manual: Verify carousel generation works
+# Manual: Verify carousel generation produces output images
 ```
 
 ### Phase 5: Cleanup (30 min)
