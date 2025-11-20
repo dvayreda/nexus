@@ -82,6 +82,7 @@ services:
       - /srv/projects/nexus:/data/workflows
       - /srv/projects/factsmind/scripts:/data/scripts
       - /srv/projects/factsmind/assets/fonts:/data/fonts
+      - /srv/bin:/data/bin
     depends_on:
       postgres:
         condition: service_healthy
