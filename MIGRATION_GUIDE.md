@@ -20,7 +20,7 @@
 - Repository 2: `factsmind` - FactsMind content project
 - Zero downtime with complete rollback capability
 
-**Critical Rollback Point:** `8afde4dc9cc0f65a138caa7b558ca900bd9d4b8b`
+**Critical Rollback Point:** `a46987f` (before migration execution)
 
 ---
 
@@ -133,7 +133,7 @@ EOF
 
 ```bash
 cd /home/dvayr/Projects_linux/nexus
-git reset --hard 8afde4dc9cc0f65a138caa7b558ca900bd9d4b8b
+git reset --hard a46987f
 git push --force origin main
 ```
 
@@ -186,7 +186,7 @@ git push --force origin main
 
 Migration-Phase: <phase>
 Migration-Status: <status>
-Rollback-Point: 8afde4dc9cc0f65a138caa7b558ca900bd9d4b8b
+Rollback-Point: a46987f
 Tested: yes/no
 ```
 
@@ -218,6 +218,7 @@ mkdir -p scripts assets/{fonts,logos} workflows docs examples/carousel-outputs
 
 # Copy files
 cp ../nexus/scripts/composite.py scripts/
+cp ../nexus/scripts/factsmind_logo.png scripts/
 cp ../nexus/docs/projects/factsmind.md docs/
 
 # Create README
@@ -264,18 +265,8 @@ cd /home/dvayr/Projects_linux/nexus
 git mv scripts/composite.py scripts/DEPRECATED-composite.py
 git mv docs/projects/factsmind.md docs/projects/DEPRECATED-factsmind.md
 
-# Update README
-cat > README.md << 'EOF'
-# Nexus
-
-Self-hosted AI content automation platform.
-
-## Projects Using Nexus
-- [FactsMind](https://github.com/dvayreda/factsmind)
-
-## Documentation
-See DOCUMENTATION_INDEX.md
-EOF
+# Update README - Add Projects section after line 12
+sed -i '12 a\\n## Projects Using Nexus\n\n### FactsMind (Migrated)\nEducational Instagram carousel generator - now in separate repository.\n\n**Repository:** [dvayreda/factsmind](https://github.com/dvayreda/factsmind)\n**Status:** Production (runs on Nexus platform)\n' README.md
 
 # Commit
 git add .
@@ -283,7 +274,7 @@ git commit -m "refactor: Extract FactsMind to separate repository
 
 Migration-Phase: Nexus-Updated
 Migration-Status: Complete
-Rollback-Point: 8afde4dc9cc0f65a138caa7b558ca900bd9d4b8b
+Rollback-Point: a46987f
 Tested: yes"
 ```
 
@@ -295,16 +286,17 @@ ssh didac@100.122.207.23 << 'EOF'
 cd /srv/projects
 git clone https://github.com/dvayreda/factsmind.git
 
-# Copy assets
+# Copy assets (fonts only - templates deprecated)
 mkdir -p factsmind/assets/fonts
-cp /srv/projects/faceless_prod/fonts/* factsmind/assets/fonts/
+cp /srv/projects/faceless_prod/fonts/*.ttf factsmind/assets/fonts/
 ls -la factsmind/
+ls -la factsmind/assets/fonts/
 EOF
 
-# Update docker-compose.yml
+# Update docker-compose.yml (remove templates, add fonts)
 cd /home/dvayr/Projects_linux/nexus
 sed -i 's|/srv/projects/faceless_prod/scripts|/srv/projects/factsmind/scripts|g' infra/docker-compose.yml
-sed -i 's|/srv/projects/faceless_prod|/srv/projects/factsmind/assets|g' infra/docker-compose.yml
+sed -i 's|/srv/projects/faceless_prod/fonts|/srv/projects/factsmind/assets/fonts|g' infra/docker-compose.yml
 
 # Deploy
 scp infra/docker-compose.yml didac@100.122.207.23:/srv/docker/
@@ -397,7 +389,7 @@ ssh didac@100.122.207.23 '~/nexus-quick.sh'
 ## SECTION 8: EMERGENCY CONTACTS
 
 **Backup Location:** `/mnt/backup/pre-migration-*` (on Pi)
-**Rollback Commit:** `8afde4dc9cc0f65a138caa7b558ca900bd9d4b8b`
+**Rollback Commit:** `a46987f` (before migration execution)
 **Git Bundle:** `/tmp/nexus-backup-*.bundle` (on WSL2)
 **Emergency Script:** `./scripts/emergency-rollback.sh`
 

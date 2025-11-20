@@ -27,7 +27,7 @@ NC='\033[0m' # No Color
 
 # Configuration
 SSH_WRAPPER="$HOME/ssh-nexus"
-ROLLBACK_COMMIT="8afde4dc9cc0f65a138caa7b558ca900bd9d4b8b"
+ROLLBACK_COMMIT="a46987f"
 
 # Functions
 log_info() {

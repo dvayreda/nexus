@@ -154,7 +154,7 @@ Context file for Claude Code when working with the Nexus automation platform.
 
 **Volume mounts (in n8n container):**
 - `/data/outputs` → `/srv/outputs` (AI images + final composites)
-- `/data/scripts` → `/srv/projects/faceless_prod/scripts` (composite.py, logo)
+- `/data/scripts` → `/srv/projects/faceless_prod/scripts` (composite.py, factsmind_logo.png)
 - `/data/fonts` → `/srv/projects/faceless_prod/fonts` (Montserrat typography)
 
 ---
