@@ -24,59 +24,31 @@ echo ""
 
 # Latest vitals
 echo -e "${CYAN}Core Vitals:${NC}"
-docker exec -i "$POSTGRES_CONTAINER" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" <<EOF
-SELECT
-    'CPU' AS metric,
-    ROUND(cpu_percent::numeric, 1) || '%' AS value,
-    '4 cores' AS note
-FROM monitoring.vitals
-ORDER BY timestamp DESC
-LIMIT 1
 
-UNION ALL
+# Get latest vitals (use simple query, format in bash)
+VITALS=$(docker exec -t "$POSTGRES_CONTAINER" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "SELECT cpu_percent, memory_used_gb, memory_total_gb, memory_percent, disk_used_gb, disk_total_gb, disk_percent, temperature_c, swap_used_gb, swap_total_gb FROM monitoring.vitals ORDER BY timestamp DESC LIMIT 1" 2>/dev/null | tr '\r' ' ')
 
-SELECT
-    'Memory',
-    ROUND(memory_used_gb::numeric, 2) || '/' || memory_total_gb || 'GB',
-    '(' || ROUND(memory_percent::numeric, 0) || '%)'
-FROM monitoring.vitals
-ORDER BY timestamp DESC
-LIMIT 1
+if [[ -n "$VITALS" ]]; then
+    CPU=$(echo "$VITALS" | cut -d'|' -f1 | xargs printf "%.1f")
+    MEM_USED=$(echo "$VITALS" | cut -d'|' -f2 | xargs printf "%.2f")
+    MEM_TOTAL=$(echo "$VITALS" | cut -d'|' -f3 | xargs printf "%.1f")
+    MEM_PCT=$(echo "$VITALS" | cut -d'|' -f4 | xargs printf "%.0f")
+    DISK_USED=$(echo "$VITALS" | cut -d'|' -f5 | xargs printf "%.0f")
+    DISK_TOTAL=$(echo "$VITALS" | cut -d'|' -f6 | xargs printf "%.0f")
+    DISK_PCT=$(echo "$VITALS" | cut -d'|' -f7 | xargs printf "%.0f")
+    TEMP=$(echo "$VITALS" | cut -d'|' -f8 | xargs printf "%.1f")
+    SWAP_USED=$(echo "$VITALS" | cut -d'|' -f9 | xargs printf "%.2f")
+    SWAP_TOTAL=$(echo "$VITALS" | cut -d'|' -f10 | xargs printf "%.1f")
+    SWAP_PCT=$(awk "BEGIN {printf \"%.0f\", ($SWAP_USED / $SWAP_TOTAL) * 100}")
 
-UNION ALL
-
-SELECT
-    'Disk',
-    ROUND(disk_used_gb::numeric, 0) || '/' || disk_total_gb || 'GB',
-    '(' || ROUND(disk_percent::numeric, 0) || '%)'
-FROM monitoring.vitals
-ORDER BY timestamp DESC
-LIMIT 1
-
-UNION ALL
-
-SELECT
-    'Temperature',
-    ROUND(temperature_c::numeric, 1) || '°C',
-    CASE
-        WHEN temperature_c > 70 THEN '⚠️  HOT'
-        WHEN temperature_c > 60 THEN 'Warm'
-        ELSE 'OK'
-    END
-FROM monitoring.vitals
-ORDER BY timestamp DESC
-LIMIT 1
-
-UNION ALL
-
-SELECT
-    'Swap',
-    ROUND(swap_used_gb::numeric, 2) || '/' || swap_total_gb || 'GB',
-    '(' || ROUND((swap_used_gb / NULLIF(swap_total_gb, 0) * 100)::numeric, 0) || '%)'
-FROM monitoring.vitals
-ORDER BY timestamp DESC
-LIMIT 1;
-EOF
+    echo "├─ CPU: ${CPU}% (4 cores)"
+    echo "├─ Memory: ${MEM_USED}/${MEM_TOTAL}GB (${MEM_PCT}%)"
+    echo "├─ Disk: ${DISK_USED}/${DISK_TOTAL}GB (${DISK_PCT}%)"
+    echo "├─ Temperature: ${TEMP}°C"
+    echo "└─ Swap: ${SWAP_USED}/${SWAP_TOTAL}GB (${SWAP_PCT}%)"
+else
+    echo "No vitals data available (run ~/nexus_vitals.sh first)"
+fi
 
 echo ""
 
