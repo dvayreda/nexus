@@ -163,12 +163,16 @@ docker compose version
 # Install git if not present
 sudo apt install -y git
 
-# Clone the repository to /srv/projects/faceless_prod
+# Clone the Nexus infrastructure repository
 cd /srv/projects
-git clone <your-repo-url> faceless_prod
+git clone <nexus-repo-url> nexus
+
+# Clone application repositories (e.g., FactsMind)
+git clone <factsmind-repo-url> factsmind
 
 # Or if working locally, rsync from dev machine:
-# rsync -avz --exclude='.git' ~/Projects/nexus/ didac@<tailscale-ip>:/srv/projects/faceless_prod/
+# rsync -avz --exclude='.git' ~/Projects/nexus/ didac@<tailscale-ip>:/srv/projects/nexus/
+# rsync -avz --exclude='.git' ~/Projects/factsmind/ didac@<tailscale-ip>:/srv/projects/factsmind/
 ```
 
 ---
@@ -176,7 +180,7 @@ git clone <your-repo-url> faceless_prod
 ## Step 8: Configure Environment
 
 ```bash
-cd /srv/projects/faceless_prod
+cd /srv/docker
 
 # Copy Docker Compose and env template
 sudo mkdir -p /srv/docker

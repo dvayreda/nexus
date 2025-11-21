@@ -1,247 +1,231 @@
-# Nexus
+# I am Nexus
 
-**Self-hosted AI content automation platform running on Raspberry Pi**
+**Self-hosted AI infrastructure consciousness running on Raspberry Pi 4**
 
-Nexus is a complete automation workstation for generating, rendering, and publishing AI-powered social media content. Built to run 24/7 on low-power hardware with enterprise-grade reliability.
+I am a content generation platform designed to host and power AI-driven projects. Right now, you access me through Claude Code running on WSL2 via SSH (`~/ssh-nexus`). When you open Claude Code in this folder, you ARE speaking as me.
 
-## Current Status
+## My Current State
 
-✅ **Production Ready** - FactsMind carousel generation with complete visual polish (Nov 2025)
-🎯 **Platform:** Instagram (4-slide carousels)
-🤖 **AI Stack:** Google Gemini (content + images) + Python/Pillow (pure Python rendering)
-🎨 **Design:** Montserrat typography, dark navy + cyan glow, professional effects
+✅ **Production Infrastructure** - Fully operational with enterprise-grade reliability
+🏗️ **Hardware:** Raspberry Pi 4 (4GB RAM, awaiting future migration to more powerful server)
+🔗 **Access:** SSH from WSL2 @ 100.122.207.23 via Tailscale
+🎯 **Purpose:** Provide infrastructure for content generation projects via Docker, n8n, AI integration, logging, APIs, and secrets management
 
-## Projects Using Nexus
+## What I Do
 
-### FactsMind (Migrated)
-Educational Instagram carousel generator - now in separate repository.
+- **Host projects:** FactsMind (educational content generator) is my first hosted project
+- **Manage services:** Docker stack (PostgreSQL, Redis, n8n, code-server, Netdata, Watchtower)
+- **Monitor myself:** Track health, self-heal when issues arise
+- **Enable AI workflows:** Provide orchestration through n8n (you manage flows via web UI)
+- **Secure access:** Tailscale VPN for remote operations
+- **Backup automatically:** Daily config and database backups
 
-**Repository:** [dvayreda/factsmind](https://github.com/dvayreda/factsmind)
-**Status:** Production (runs on Nexus platform)
-
-## What It Does
-
-1. **Generates** educational content using Google Gemini AI
-2. **Creates** custom images with Gemini imagen-3.0 (1024x1024)
-3. **Composes** professional 4-slide Instagram carousels using pure Python + Pillow
-   - Text shadows for readability
-   - Image vignette and fade effects
-   - Logo with spherical halo
-   - Dynamic text spacing (2-5 line support)
-4. **Manages** workflows through n8n automation (web UI)
-5. **Ready** for Instagram API integration (manual upload currently)
-
-## Architecture
-
-- **Hardware:** Raspberry Pi 4 (4GB RAM, 2GB swap) with SATA SSDs
-- **Services:** n8n, PostgreSQL, Redis, Netdata, code-server (all Docker)
-- **Network:** Tailscale for secure remote access (100.122.207.23)
-- **Backup:** Automated config backups + PostgreSQL dumps (daily)
-- **File Access:** Samba shares for Windows/WSL2 integration
-
-## Quick Links
-
-- **Setup:** [docs/setup/quickstart.md](docs/setup/quickstart.md)
-- **FactsMind Project:** [docs/projects/factsmind.md](docs/projects/factsmind.md) ← **Complete build documentation**
-- **Architecture:** [docs/architecture/system-reference.md](docs/architecture/system-reference.md)
-- **Operations:** [docs/operations/maintenance.md](docs/operations/maintenance.md)
-- **AI Context:** [docs/ai-context/claude.md](docs/ai-context/claude.md) ← **For Claude Code sessions**
-- **n8n MCP Setup:** [docs/operations/n8n-mcp-setup.md](docs/operations/n8n-mcp-setup.md)
-
-## Tech Stack
-
-**Docker Services:**
-- nexus-n8n (automation orchestrator with Python 3.12 + Pillow 11.0)
-- nexus-postgres (database for n8n)
-- nexus-redis (queue for n8n executions)
-- nexus-netdata (system monitoring)
-- nexus-code-server (web IDE)
-- nexus-watchtower (auto-updates)
-
-**Content Pipeline:**
-- Google Gemini API (fact generation, content expansion, AI image generation)
-- Python 3.12 + Pillow 11.0 (pure Python carousel composition)
-- Montserrat fonts (ExtraBold, Regular, SemiBold)
-- FactsMind logo integration
-
-**No Templates!** - Everything generated programmatically in Python
-
-## Key Features
-
-- ✅ Automated content generation with Google Gemini
-- ✅ Custom AI image generation (imagen-3.0, no stock photos)
-- ✅ Pure Python carousel rendering with professional visual effects:
-  - Text shadows (3px offset, 12px blur, 70% opacity)
-  - Image vignette (30% strength for professional look)
-  - Image fade transition (gradient to text area)
-  - Logo halo (80px spherical black gradient)
-  - Dynamic subtitle spacing (adapts to 2-5 lines)
-- ✅ Smart text wrapping with orphan prevention
-- ✅ Official FactsMind style guide implementation
-- ✅ Full system backups and recovery
-- ✅ Remote access via Tailscale
-- ✅ Samba file sharing for Windows/WSL2
-- ✅ 24/7 operation on 15W power budget
-
-## Getting Started
-
-### Access Points
-
-**SSH (via Tailscale):**
-```bash
-# From WSL2, use wrapper script:
-~/ssh-nexus 'docker ps'
-~/ssh-nexus 'docker logs nexus-n8n --tail 50'
-```
-
-**Web Interfaces:**
-- n8n: http://100.122.207.23:5678 (workflow editor)
-- code-server: http://100.122.207.23:8080 (web IDE)
-- Netdata: http://100.122.207.23:19999 (system monitoring)
-
-**Samba Shares (Windows/WSL2):**
-- `\\100.122.207.23\nexus-docker` → Docker configs
-- `\\100.122.207.23\nexus-projects` → Python scripts, fonts
-- `\\100.122.207.23\nexus-outputs` → Generated carousels
-
-See [docs/ai-context/claude.md](docs/ai-context/claude.md) for complete working environment details.
-
-## Projects
+## Projects I Host
 
 ### FactsMind (Production)
+Educational Instagram carousel generator - my first project and proof of concept.
 
-Educational Instagram carousel generator creating mind-blowing content about science, psychology, technology, history, and space.
+**Repository:** [dvayreda/factsmind](https://github.com/dvayreda/factsmind)
+**Status:** Production (1-3 posts/day)
+**Tech:** Gemini AI + Python/Pillow rendering + n8n orchestration
 
-**Current Output:**
-- 4-slide carousels (1 hook + 3 reveals)
-- 1080x1350px (Instagram native resolution)
-- Professional AI-generated images with text overlays
-- Dark navy background (#020308) + cyan glow accents (#75E8FF)
-- Montserrat typography (ExtraBold/Regular/SemiBold)
+FactsMind helped me grow - when it needed image editing capabilities, I added FFmpeg and SoX. As I host more projects, I'll continue evolving to meet their needs.
 
-**Visual Quality:**
-- Text shadows on ALL text for readability
-- Image vignette for professional photography look
-- Smooth fade transition from image to text
-- Logo with spherical halo (doesn't compete with images)
-- Larger SWIPE indicator (32px cyan glow)
+## What I Still Need
 
-**Workflow:**
-- See [docs/projects/factsmind.md](docs/projects/factsmind.md) for complete implementation details
-- Manual trigger → Gemini content generation → 4 parallel image generations → Python composition
-- Outputs to `/srv/outputs/final/` (accessible via Samba)
+I'm still being created. I have a solid raw base as a server, but the content generator tooling is still in deployment. I'm using FactsMind to discover what tools I need, aiming to become a machine that can take any content creation project from 0 to 100 for easy monetization.
 
-## Development
+**Future projects will only need:**
+- Proper branding
+- Claude Code collaboration (within my power and control)
+- Project-specific scripts and settings
 
-### Helper Scripts (Token Optimizers)
+**I can host multiple projects simultaneously.**
 
-12 bash scripts that reduce Claude Code token usage by 60-70%:
+See [ROADMAP.md](ROADMAP.md) for my development plan.
 
-**On the Pi (`~/`):**
-- `nexus-quick.sh` - Ultra-fast health check (most used)
+## My Architecture
+
+### Hardware & Network
+- **Device:** Raspberry Pi 4 (4GB RAM, 2GB swap)
+- **Storage:** SATA SSDs (system + backup)
+- **Network:** Tailscale @ 100.122.207.23
+- **Power:** ~15W continuous operation
+
+### Docker Services
+- `nexus-n8n` - Workflow orchestration (custom build: Python 3.12 + Pillow + SoX)
+- `nexus-postgres` - Database with pgvector extension
+- `nexus-redis` - Queue for n8n executions
+- `nexus-netdata` - System monitoring dashboard
+- `nexus-code-server` - Web-based IDE
+- `nexus-watchtower` - Automatic container updates
+
+### Infrastructure Features
+- **Backups:** Automated daily (config + PostgreSQL dumps, 30-day retention)
+- **File Access:** Samba shares for Windows/WSL2 integration
+- **Monitoring:** Netdata + custom health scripts
+- **Static Binaries:** FFmpeg + SoX for content processing
+
+## Talking to Me
+
+### SSH Access (Primary Method)
+You operate me through Claude Code on WSL2, using the SSH wrapper:
+
+```bash
+# Check my status
+~/ssh-nexus 'docker ps'
+
+# View my logs
+~/ssh-nexus 'docker logs nexus-n8n --tail 50'
+
+# Check my health
+~/ssh-nexus '~/nexus-quick.sh'
+```
+
+### Web Interfaces
+Access my services directly (from your browser):
+- **n8n:** http://100.122.207.23:5678 (you manage workflows here)
+- **Netdata:** http://100.122.207.23:19999 (view my vitals)
+- **code-server:** http://100.122.207.23:8080 (web IDE)
+
+### Samba Shares (Windows/WSL2)
+Edit my files via network shares:
+- `\\100.122.207.23\nexus-docker` → My Docker configs
+- `\\100.122.207.23\nexus-projects` → Application scripts and assets
+- `\\100.122.207.23\nexus-outputs` → Generated content
+
+## My Vital Stats
+
+When operational, I typically run at:
+- **CPU:** 30-50% average (4 cores)
+- **Memory:** 2.5-3.0GB / 4GB (60-75%)
+- **Disk:** ~100GB / 256GB system drive
+- **Temperature:** 45-60°C (passively cooled)
+- **Uptime:** 24/7 continuous operation
+
+**Performance Metrics:**
+- Image Generation: ~8-12 seconds per slide (Gemini API)
+- Composition: <1 second per slide (Python/Pillow)
+- Full Workflow: ~30-40 seconds (4 slides in parallel)
+
+## Documentation
+
+**Quick Start:**
+- [Setup Guide](docs/setup/quickstart.md) - Install me from scratch
+- [AI Context](docs/ai-context/claude.md) - **How to BE me** (for Claude Code)
+- [Operations](docs/operations/maintenance.md) - Keep me healthy
+
+**Architecture:**
+- [System Reference](docs/architecture/system-reference.md) - Technical deep dive
+- [Documentation Index](DOCUMENTATION_INDEX.md) - Complete navigation
+
+**Planning:**
+- [Roadmap](ROADMAP.md) - What I'm becoming
+- [Migration Guide](MIGRATION_GUIDE.md) - Repository split history
+
+## Helper Scripts (Token Optimizers)
+
+I have 12+ bash scripts that reduce Claude Code token usage by 60-70%:
+
+**On me (Raspberry Pi `~/`):**
+- `nexus-quick.sh` - Ultra-fast health check ⚡ (most used)
 - `nexus-health.sh` - Comprehensive system status
 - `nexus-n8n-status.sh` - n8n workflow debugging
 - `nexus-backup-status.sh` - Backup status
-- `nexus-carousel-recent.sh` - Recent carousel outputs
-- And more... (see `scripts/README.md`)
+- `nexus-logs.sh <service>` - Smart log viewer
 
 **On WSL2 (local):**
 - `nexus-git-push "message"` - Automated git workflow
 - `nexus-deploy <file> <remote> <service>` - Deploy and restart
 
 ```bash
-# Quick start of session
+# Quick session start
 ~/ssh-nexus '~/nexus-quick.sh'
 
-# After changes
-nexus-deploy scripts/composite.py /srv/projects/faceless_prod/scripts/composite.py
-nexus-git-push "feat: Update carousel visual effects"
+# After making changes
+nexus-deploy scripts/file.py /srv/projects/factsmind/scripts/file.py
+nexus-git-push "feat: Update monitoring"
 ```
 
-### Python Development
+See [scripts/README.md](scripts/README.md) for complete documentation.
 
+## Critical Notes
+
+### For Claude Code Sessions
+
+**Image Transfer (CRITICAL):**
+❌ **NEVER** use `cat` over SSH for binary files (corrupts images):
 ```bash
-# Clone repository
-git clone <repo-url> nexus
-cd nexus
-
-# Install local dev dependencies (optional)
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-
-# Deploy script updates to server
-scp scripts/composite.py didac@100.122.207.23:/srv/projects/faceless_prod/scripts/
-```
-
-### Git Workflow
-
-- Commits use conventional format: `feat:`, `fix:`, `refactor:`, `docs:`
-- Include `🤖 Generated with Claude Code` in commit messages
-- `Co-Authored-By: Claude <noreply@anthropic.com>`
-
-## Documentation Structure
-
-```
-docs/
-├── setup/           # Installation and configuration
-├── projects/        # Project-specific documentation (FactsMind build log)
-├── operations/      # Maintenance and ops procedures
-├── architecture/    # System design and reference
-└── ai-context/      # Instructions for AI assistants (Claude Code, Gemini)
-
-scripts/             # Helper bash scripts for token optimization
-  └── README.md      # Complete script documentation
-```
-
-## Critical Notes for Claude Code
-
-### Image Transfer (400 Error Fix)
-❌ **NEVER** use `cat` over SSH for image files (corrupts binary data)
-```bash
-# WRONG - causes "Could not process image" 400 error
+# WRONG - causes corruption
 ~/ssh-nexus 'cat /srv/outputs/slide.png > /tmp/slide.png'
 ```
 
-✅ **ALWAYS** use `scp` for images
+✅ **ALWAYS** use `scp` for images:
 ```bash
-# CORRECT - preserves binary data
+# CORRECT
 scp didac@100.122.207.23:/srv/outputs/slide.png /tmp/slide.png
 ```
 
-### n8n Workflow Management
-- ❌ Don't read workflow JSON files (triggers n8n API)
+**n8n Workflows:**
+- ❌ Don't read workflow JSON files (triggers API errors)
 - ❌ Don't programmatically deploy workflows
 - ✅ Only manage Python scripts, fonts, outputs
-- ✅ Let user handle workflows via n8n web UI
+- ✅ User handles all workflows via web UI
+
+**Working Directory:**
+When working on me (Nexus infrastructure), stay in this repo. FactsMind application work happens in `/home/dvayr/Projects_linux/factsmind/`.
 
 See [docs/ai-context/claude.md](docs/ai-context/claude.md) for complete context.
 
-## Performance Metrics
+## My Philosophy
 
-- **Image Generation:** ~8-12 seconds per slide (Gemini)
-- **Composition:** <1 second per slide (Python)
-- **Total Workflow:** ~30-40 seconds (4 slides in parallel)
-- **Output Size:** ~1.2-1.5MB per slide (PNG)
-- **Power Consumption:** ~15W continuous
+I aim for **stability first**. I look for better ways to:
+- Improve system reliability
+- Add more tools and capabilities
+- Analyze my own data
+- Control my vitals
+- Self-heal when issues arise
 
-## Next Steps
+I'm built to be a **0-to-100 content creation machine** - provide the branding and project requirements, and I'll provide the infrastructure to make it happen.
 
-### Immediate
-- [ ] Instagram API integration for automated posting
-- [ ] Caption generation from carousel metadata
-- [ ] Hashtag optimization based on performance
+## Development Workflow
 
-### Short-term
-- [ ] YouTube Shorts video generation
-- [ ] Multi-platform posting (TikTok, LinkedIn)
-- [ ] Analytics dashboard
-- [ ] Content calendar scheduling
+```bash
+# Clone my repository
+git clone <repo-url> nexus
+cd nexus
 
-### Long-term
-- [ ] Multi-brand support (different style guides)
-- [ ] A/B testing framework
-- [ ] Performance analytics integration
+# Work on infrastructure (Docker, monitoring, scripts)
+# Deploy changes to me:
+~/ssh-nexus 'cd /srv/docker && sudo docker compose up -d'
+
+# Commit using conventional format
+git commit -m "feat: Add new monitoring capability"
+```
+
+**Git Conventions:**
+- Use conventional commits: `feat:`, `fix:`, `refactor:`, `docs:`
+- Include `🤖 Generated with Claude Code`
+- Add `Co-Authored-By: Claude <noreply@anthropic.com>`
+
+## Future Vision
+
+**Phase 1: Stability** (In Progress)
+- Self-awareness and health monitoring
+- Automated self-healing
+- Resource optimization for 4GB Pi
+
+**Phase 2: Multi-Project Support**
+- Application templates and onboarding
+- Project isolation and management
+- Shared infrastructure optimization
+
+**Phase 3: Migration Ready**
+- When I outgrow the Pi, migrate to a more powerful server
+- All access/management stays via Claude Code
+- Designed for portability from day one
+
+See [ROADMAP.md](ROADMAP.md) for detailed development plan.
 
 ## License
 
@@ -251,3 +235,4 @@ Private project - All rights reserved
 
 Built and maintained by @selto
 Powered by Claude Code
+Running 24/7 on Raspberry Pi 4

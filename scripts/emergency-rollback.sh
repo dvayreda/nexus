@@ -88,7 +88,7 @@ verify_backup_integrity() {
         { log_error "✗ Volumes backup FAILED!"; exit 1; }
 
     # Check files backup
-    $SSH_WRAPPER "[ -f '$BACKUP_DIR/srv/projects/faceless_prod/scripts/composite.py' ]" && \
+    $SSH_WRAPPER "[ -f '$BACKUP_DIR/srv/projects/factsmind/scripts/composite.py' ]" && \
         log_info "✓ Application files OK" || \
         { log_error "✗ Files backup FAILED!"; exit 1; }
 

@@ -282,7 +282,9 @@ services:
     ports:
       - "5678:5678"
     volumes:
-      - /srv/projects/faceless_prod:/data
+      - /srv/projects/factsmind/scripts:/data/scripts
+      - /srv/projects/factsmind/assets:/data/assets
+      - /srv/outputs:/data/outputs
       - /srv/n8n_data:/home/node/.n8n
     depends_on:
       postgres:
@@ -805,7 +807,7 @@ jobs:
         with:
           switches: -avz --delete
           path: ./
-          remote_path: /srv/projects/faceless_prod
+          remote_path: /srv/projects/nexus  # Or /srv/projects/factsmind for application repo
           remote_host: ${{ secrets.NEXUS_TAILSCALE_IP }}
           remote_user: didac
           remote_key: ${{ secrets.NEXUS_SSH_KEY }}
