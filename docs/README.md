@@ -25,15 +25,9 @@ Organized documentation for the Nexus AI content automation platform.
 
 ### 🔮 STRATEGIC PLANNING (Future)
 
-**[strategic-analysis/](strategic-analysis/)** - Future vision (NEW!)
+**[strategic-analysis/](strategic-analysis/)** - Future vision
 - **[architecture/nexus-2.0-architecture.md](strategic-analysis/architecture/nexus-2.0-architecture.md)** - Scaling options
 - **[business/monetization-strategy.md](strategic-analysis/business/monetization-strategy.md)** - Business models
-
-**[future-implementations/](future-implementations/)** - Implementation guides (NEW!)
-- **[multi-model-ensemble.md](future-implementations/multi-model-ensemble.md)** - +30% quality boost
-- **[quality-validator.md](future-implementations/quality-validator.md)** - AI content validation
-- **[performance-optimization.md](future-implementations/performance-optimization.md)** - 2x speed
-- **[rag-fact-generation.md](future-implementations/rag-fact-generation.md)** - Knowledge base
 
 ### 📊 REFERENCE
 

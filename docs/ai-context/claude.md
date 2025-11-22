@@ -148,7 +148,6 @@ scp didac@100.122.207.23:/srv/outputs/slide.png /tmp/slide.png
 │   │   ├── scripts/                # Application scripts
 │   │   ├── assets/fonts/           # Fonts
 │   │   └── docs/                   # App documentation
-│   ├── faceless_prod -> factsmind  # Legacy symlink (remove eventually)
 │   └── nexus/                      # This git repo clone
 ├── outputs/
 │   └── final/                      # Generated content

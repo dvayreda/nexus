@@ -16,8 +16,7 @@ docs/
 │   └── projects/                # Project-specific docs (FactsMind)
 │
 ├── 🔮 STRATEGIC ANALYSIS (Read for Planning)
-│   ├── strategic-analysis/      # Future architecture & business
-│   └── future-implementations/  # AI integration guides
+│   └── strategic-analysis/      # Future architecture & business
 │
 └── 📊 REFERENCE
     ├── architecture/            # Current system reference
@@ -76,64 +75,6 @@ These are **strategic planning documents** for future evolution, NOT current ope
 - **Timeline:** Read this week if considering monetization
 
 **Status:** 🔮 Planning Phase - Read to understand future possibilities
-
----
-
-## 🚀 FUTURE IMPLEMENTATIONS (NEW - Read Before Building)
-
-**Location:** `docs/future-implementations/`
-
-These are **step-by-step guides** for implementing AI enhancements. NOT yet built.
-
-### AI Integration Projects (Priority Order)
-
-#### 🥇 HIGH PRIORITY (Implement First)
-
-**1. Multi-Model Ensemble** (1,350 lines)
-- **File:** `docs/future-implementations/multi-model-ensemble.md`
-- **Impact:** +30% content quality, -15% cost
-- **Effort:** 3-5 days
-- **What it does:** Use Claude for content, Gemini for images, Groq for facts
-- **Prerequisites:** None (works with current setup)
-- **Recommended:** Implement FIRST for immediate quality boost
-
-**2. Quality Validator** (1,208 lines)
-- **File:** `docs/future-implementations/quality-validator.md`
-- **Impact:** 0% bad posts published (catch errors before approval)
-- **Effort:** 2-3 days
-- **What it does:** AI validates every carousel before Telegram approval
-- **Prerequisites:** Anthropic API key
-- **Recommended:** Implement SECOND for quality control
-
-**3. Performance Optimization** (1,561 lines)
-- **File:** `docs/future-implementations/performance-optimization.md`
-- **Impact:** 60s → 30s generation time (2x faster)
-- **Effort:** 3-4 days
-- **What it does:** Parallel processing, caching, template preloading
-- **Prerequisites:** Redis (add to docker-compose)
-- **Recommended:** Implement THIRD when generating 10+ posts/day
-
-#### 🥈 MEDIUM PRIORITY (Implement Later)
-
-**4. RAG Fact Generation** (1,717 lines)
-- **File:** `docs/future-implementations/rag-fact-generation.md`
-- **Impact:** +20% fact accuracy, 500+ unique facts
-- **Effort:** 4-6 days
-- **What it does:** Build knowledge base with pgvector for better facts
-- **Prerequisites:** PostgreSQL with pgvector (already have!)
-- **Recommended:** Implement when you want more fact diversity
-
-#### 🥉 NICE TO HAVE (Optional)
-
-**5. Production Hardening** (1,995 lines)
-- **File:** `docs/operations/production-hardening.md`
-- **Impact:** Security, monitoring, automated recovery
-- **Effort:** 5-7 days
-- **What it does:** Enterprise-grade security and monitoring
-- **Prerequisites:** None
-- **Recommended:** Implement when running multiple brands or SaaS
-
-**Status:** 📝 Not Yet Built - Follow guides to implement when ready
 
 ---
 

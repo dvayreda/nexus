@@ -85,7 +85,7 @@ echo "=== BACKUP VERIFICATION ==="
 [ -d "$BACKUP_DIR/docker-volumes/n8n_data" ] && echo "✓ Docker volumes OK" || echo "✗ Volumes FAILED!"
 
 # Files
-[ -f "$BACKUP_DIR/srv/projects/faceless_prod/scripts/composite.py" ] && echo "✓ Application files OK" || echo "✗ Files FAILED!"
+[ -f "$BACKUP_DIR/srv/projects/factsmind/scripts/composite.py" ] && echo "✓ Application files OK" || echo "✗ Files FAILED!"
 
 echo "Total backup size: $(du -sh $BACKUP_DIR | cut -f1)"
 EOF
@@ -288,15 +288,13 @@ git clone https://github.com/dvayreda/factsmind.git
 
 # Copy assets (fonts only - templates deprecated)
 mkdir -p factsmind/assets/fonts
-cp /srv/projects/faceless_prod/fonts/*.ttf factsmind/assets/fonts/
+cp /srv/projects/factsmind/fonts/*.ttf factsmind/assets/fonts/
 ls -la factsmind/
 ls -la factsmind/assets/fonts/
 EOF
 
-# Update docker-compose.yml (remove templates, add fonts)
+# Note: docker-compose.yml already uses /srv/projects/factsmind paths
 cd /home/dvayr/Projects_linux/nexus
-sed -i 's|/srv/projects/faceless_prod/scripts|/srv/projects/factsmind/scripts|g' infra/docker-compose.yml
-sed -i 's|/srv/projects/faceless_prod/fonts|/srv/projects/factsmind/assets/fonts|g' infra/docker-compose.yml
 
 # Deploy
 scp infra/docker-compose.yml didac@100.122.207.23:/srv/docker/
