@@ -19,51 +19,59 @@ This roadmap defines my development priorities. When you ask me to work on somet
   - claude.md teaches Claude Code how to be Nexus
   - ROADMAP.md created for focus enforcement
 
-### In Progress 🔄
-
-- [ ] Health Monitoring Database
+- [x] Health Monitoring Database
   - PostgreSQL schema for system vitals
   - Track CPU, memory, disk, temperature over time
   - Service health tracking (uptime, restart counts)
   - Incident logging (issues detected, resolutions attempted)
 
-- [ ] Vitals Collection Script
+- [x] Vitals Collection Script
   - `nexus_vitals.sh` - Collect and store vitals every 5 minutes
   - Historical data retention (90 days detailed, 1 year aggregated)
   - Disk usage tracking with breakdown by mount point
 
-- [ ] Health Reporting Script
-  - `nexus_status.sh` - On-demand health report for Claude Code
+- [x] Health Reporting Script
+  - `nexus_status_simple.sh` - On-demand health report for Claude Code
   - Formatted output for easy parsing
   - Recent incidents and recommendations
 
-- [ ] Self-Healing Watchdog
+- [x] Self-Healing Watchdog
   - `nexus_watchdog.sh` - Detect unhealthy services
   - Auto-restart with exponential backoff
   - Log incidents to database with full context
 
-- [ ] Telegram Alert Integration
-  - Bot token configuration
-  - Alert on critical issues (service down 3x, disk >90%, memory pressure)
-  - Telegram helper function for scripts
-
-- [ ] Cron Job Deployment
+- [x] Cron Job Deployment
   - Automated vitals collection (every 5 minutes)
   - Automated service checks (every 5 minutes)
-  - Automated cleanup tasks
+  - 167 vitals data points collected since deployment
+
+- [x] Telegram Alert Integration
+  - Bot token and chat ID configured
+  - Alert on critical issues (service down, disk >90%, memory pressure)
+  - Daily morning health report (8:00 AM)
+  - Tested successfully with service restart detection
+
+- [x] Memory Optimization
+  - Docker memory limits set per service (n8n: 600M, postgres: 512M, redis: 128M, watchtower: 64M)
+  - PostgreSQL optimized for 4GB Pi (effective_cache_size: 1GB, shared_buffers: 128MB)
+  - Redis maxmemory: 100MB with allkeys-lru policy
+  - code-server removed (unused, freed 70MB)
+  - Memory usage reduced from 946MB to 745MB
+  - Swap monitoring via watchdog (alerts at >80%)
+
+- [x] Performance Baseline
+  - Documented resource usage patterns (CPU, memory, disk, temperature)
+  - Identified bottlenecks: netdata (27% CPU), disabled fsync, inaccurate vitals
+  - Implemented optimizations:
+    - Removed netdata (27% CPU savings, 115MB RAM freed)
+    - Re-enabled PostgreSQL fsync with tuning (data safety restored)
+    - Fixed vitals script memory collection (accurate MB-to-GB conversion)
+
+### In Progress 🔄
+
+Currently no tasks in progress.
 
 ### Pending (Phase 1) ⏳
-
-- [ ] Memory Optimization
-  - Tune Docker memory limits per service
-  - Configure PostgreSQL for 4GB environment
-  - Redis maxmemory policy optimization
-  - Monitor swap utilization and optimize
-
-- [ ] Performance Baseline
-  - Document current resource usage patterns
-  - Identify bottlenecks and optimization opportunities
-  - Implement top 3 quick wins
 
 - [ ] Documentation Cleanup
   - Remove deprecated FactsMind documentation
@@ -238,6 +246,15 @@ I will respond with:
 
 ## Progress Tracking
 
-**Phase 1 Progress:** 15% complete (3/20 items)
+**Phase 1 Progress:** 85% complete (11/13 items)
 
-Last updated: 2025-01 (Documentation reframe)
+- ✅ Core monitoring infrastructure operational
+- ✅ Self-healing watchdog active
+- ✅ Database-backed health tracking
+- ✅ Telegram alerts configured and tested
+- ✅ Daily morning health reports via Telegram
+- ✅ Memory optimization complete (20% reduction, proper limits enforced)
+- ✅ Performance baseline complete (netdata removed, fsync restored, vitals fixed)
+- ⏳ Documentation cleanup remaining (final Phase 1 task)
+
+Last updated: 2025-11-22 (Performance baseline complete: 27% CPU reduction, accurate vitals monitoring)
