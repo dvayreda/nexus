@@ -126,22 +126,10 @@ collect_service_health() {
         # Get restart count
         RESTART_COUNT=$(docker inspect "$service" --format '{{.RestartCount}}')
 
-        # Get memory usage (if running)
-        if [[ "$STATUS" == "running" ]]; then
-            MEMORY_STATS=$(docker stats "$service" --no-stream --format "{{.MemUsage}}" | awk '{print $1}')
-            # Convert to MB (handle MiB/GiB)
-            if [[ "$MEMORY_STATS" == *"GiB"* ]]; then
-                MEMORY_MB=$(echo "$MEMORY_STATS" | sed 's/GiB//' | awk '{printf "%.2f", $1 * 1024}')
-            else
-                MEMORY_MB=$(echo "$MEMORY_STATS" | sed 's/MiB//')
-            fi
-
-            # Get CPU usage
-            CPU_STATS=$(docker stats "$service" --no-stream --format "{{.CPUPerc}}" | sed 's/%//')
-        else
-            MEMORY_MB="NULL"
-            CPU_STATS="NULL"
-        fi
+        # Skip memory and CPU stats (docker stats causes hangs in SSH context)
+        # TODO: Implement cadvisor or similar for per-service metrics
+        MEMORY_MB="NULL"
+        CPU_STATS="NULL"
 
         # Insert into database
         SERVICE_SQL="INSERT INTO monitoring.service_health (check_time, service_name, status, uptime_seconds, restart_count, memory_usage_mb, cpu_percent) VALUES (NOW(), '$service', '$STATUS', $UPTIME, $RESTART_COUNT, $MEMORY_MB, $CPU_STATS);"
