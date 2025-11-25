@@ -17,9 +17,10 @@ purpose: Track Instagram performance for FactsMind content strategy
 
 ### Prerequisites
 
-1. **Instagram Creator Account** (already have ✅)
-2. **Meta Access Token** (you provided: `EAASF9Dn36Nc...`)
-3. **Instagram App ID and Secret** (from Meta Developer Portal)
+1. **Instagram Creator Account** ✅
+2. **Meta Access Token** (🔴 **Needs valid token** - current token rejected by API)
+3. **Instagram App ID** (optional for now)
+4. **Instagram App Secret** (optional for now)
 
 ### Setup (5 minutes)
 
@@ -33,15 +34,34 @@ purpose: Track Instagram performance for FactsMind content strategy
 docker exec -i nexus-postgres psql -U faceless -d nexus_system < /home/didac/nexus/infra/social_schema.sql
 ```
 
-#### Step 2: Set Environment Variables on Pi
+#### Step 2: Add Environment Variables to Pi
+
+Create `.instagram_env` file with credentials:
 
 ```bash
-# Add to ~/.bashrc
-echo 'export INSTAGRAM_ACCESS_TOKEN="EAASF9Dn36NcBQNSx4AXnodxm6ZBV5iovOjfYf3BxEFJOmZCaNbpZADXzd7WqAJQmZBe0NJcTjUdFIeQbsdLZABYjVTkpSDQi0OaUG1ilq4WblZBDmYD5VPqfcZApBp9POhYxbtvHUdbtjucoosZBjXLknsMT8PZCbSc1poSrV6yKmk4ew2Vsd4nQ6zlCwdMvxRzaV2pEo4EXPhlfQwZBkls9CPWYjDjZC0lnE8ZD"' >> ~/.bashrc
-echo 'export INSTAGRAM_APP_ID="your-app-id"' >> ~/.bashrc
-echo 'export INSTAGRAM_APP_SECRET="your-app-secret"' >> ~/.bashrc
-source ~/.bashrc
+# SSH to Pi
+~/ssh-nexus
+
+# The file is already created at ~/.instagram_env
+# Edit it with your valid credentials:
+nano ~/.instagram_env
 ```
+
+File contents:
+```bash
+export INSTAGRAM_ACCESS_TOKEN="YOUR_VALID_TOKEN_HERE"
+export INSTAGRAM_APP_ID="your-app-id"
+export INSTAGRAM_APP_SECRET="your-app-secret"
+```
+
+**How to get a valid token:**
+1. Go to https://developers.facebook.com
+2. Select your app
+3. Go to **Tools** → **Graph API Explorer**
+4. Select your Instagram app from dropdown
+5. Click **"Generate Access Token"**
+6. Ensure permissions include: `instagram_basic`, `instagram_manage_insights`
+7. Copy the full token
 
 #### Step 3: Deploy Sync Script
 
@@ -53,11 +73,26 @@ scp scripts/pi/nexus-social-sync.sh didac@100.122.207.23:~/nexus-social-sync.sh
 ~/ssh-nexus 'chmod +x ~/nexus-social-sync.sh'
 ```
 
-#### Step 4: Test
+#### Step 3: Test Token Validity
+
+Before running the sync, verify your token works:
 
 ```bash
-# Run manually
-~/ssh-nexus '~/nexus-social-sync.sh'
+# SSH to Pi and test
+TOKEN="YOUR_TOKEN_HERE"
+curl -s "https://graph.instagram.com/v18.0/me?access_token=${TOKEN}&fields=id,username,followers_count"
+
+# Should return your account info, not an error
+```
+
+#### Step 4: Run Sync Script
+
+```bash
+# SSH to Pi
+~/ssh-nexus
+
+# Run manually (load env first)
+source ~/.instagram_env && ~/nexus-social-sync.sh
 
 # Should output:
 # Starting Instagram social sync...
@@ -68,9 +103,11 @@ scp scripts/pi/nexus-social-sync.sh didac@100.122.207.23:~/nexus-social-sync.sh
 
 #### Step 5: Add Cron Job
 
+Once working manually, schedule it:
+
 ```bash
 # Add to crontab (daily at 10 AM)
-~/ssh-nexus '(crontab -l 2>/dev/null; echo "0 10 * * * ~/nexus-social-sync.sh >> /var/log/nexus-social-sync.log 2>&1") | crontab -'
+~/ssh-nexus '(crontab -l 2>/dev/null | grep -v nexus-social-sync; echo "0 10 * * * source ~/.instagram_env && ~/nexus-social-sync.sh >> /var/log/nexus-social-sync.log 2>&1") | crontab -'
 ```
 
 ---
