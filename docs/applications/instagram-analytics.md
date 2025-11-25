@@ -1,15 +1,18 @@
 ---
 title: Nexus Instagram Analytics Integration
-version: 1.0
+version: 2.0
 last_updated: 2025-11-25
-purpose: Track Instagram performance for FactsMind content strategy
+status: Production
+purpose: Track Instagram Business Account performance for FactsMind content strategy
 ---
 
 # Instagram Analytics Integration
 
 **Purpose:** Collect and analyze Instagram performance data to inform FactsMind content strategy decisions.
 
-**Architecture:** Nexus (infrastructure) collects data → PostgreSQL storage → FactsMind (app) consumes insights
+**Architecture:** Nexus (infrastructure) → Facebook Graph Business API → PostgreSQL → FactsMind (app)
+
+**Current Status:** ✅ **Production Ready** - Daily syncs working, 60-day token active
 
 ---
 
@@ -17,98 +20,134 @@ purpose: Track Instagram performance for FactsMind content strategy
 
 ### Prerequisites
 
-1. **Instagram Creator Account** ✅
-2. **Meta Access Token** (🔴 **Needs valid token** - current token rejected by API)
-3. **Instagram App ID** (optional for now)
-4. **Instagram App Secret** (optional for now)
+1. **Instagram Business Account** ✅ (factsmind_official)
+2. **Facebook Page linked to Instagram Account** ✅ (FactsMind page ID: 790469140827308)
+3. **60-day Meta Access Token** ✅ (Valid until January 2026)
+4. **App ID & Secret** ✅ (For token refresh capability)
 
-### Setup (5 minutes)
+### Setup (Already Complete on Production)
 
-#### Step 1: Deploy Database Schema
+#### Step 1: Production Deployment (Already Done)
+
+The following has already been deployed and is running:
+
+**Database Schema**
+- ✅ `social_analytics` schema created
+- ✅ Tables: `ig_accounts`, `daily_snapshots`, `ig_posts`, `post_metrics`
+- ✅ Schema includes: biography, followers, posts, engagement metrics
+
+**Credentials Deployed**
+- ✅ Token stored in `~/.instagram_env` on Pi
+- ✅ APP_ID and APP_SECRET backed up for token refresh
+- ✅ File permissions: 600 (secure)
+
+**Sync Script Deployed**
+- ✅ `nexus-social-sync.sh` configured for Business API
+- ✅ Cron job scheduled: 10 AM daily (`0 10 * * *`)
+- ✅ Script uses Facebook Graph API (v18.0)
+
+---
+
+## Authentication Flow (How It Works)
+
+The current setup uses the **Facebook Graph Business API** with this flow:
+
+```
+Facebook Page (ID: 790469140827308)
+    ↓
+    (has connected)
+    ↓
+Instagram Business Account (ID: 17841478242620376)
+    ↓
+    (queries via)
+    ↓
+Facebook Graph API v18.0 with 60-day access token
+```
+
+**Why this approach?**
+- Basic Instagram API only works with personal accounts
+- Business API requires Page → Account connection
+- Token lasts 60 days (much better than 1 hour)
+- Can include APP_ID/SECRET for automatic renewal
+
+#### What Happens Daily
+
+The 10 AM cron job runs `nexus-social-sync.sh` which:
+
+1. **Gets Facebook Page** (FactsMind page)
+2. **Retrieves linked Instagram Business Account** (factsmind_official)
+3. **Collects account metrics:**
+   - Username, followers, post count
+   - Biography, website, verification status
+4. **Stores daily snapshot** in PostgreSQL
+5. **Collects recent posts** (up to 10) with engagement metrics
+6. **Updates database** with latest data
+
+**Example Output:**
+```
+[2025-11-25 18:01:37] Starting Instagram Business API social sync...
+[2025-11-25 18:01:38] Instagram Business Account ID: 17841478242620376
+[2025-11-25 18:01:39] Account: factsmind_official | Followers: 8 | Posts: 10
+[2025-11-25 18:01:39] Account data stored successfully
+[2025-11-25 18:01:39] Collecting recent posts...
+[2025-11-25 18:01:39] Found 10 recent posts
+[2025-11-25 18:01:39] Instagram sync complete!
+```
+
+#### Manual Test
+
+To verify the sync works anytime:
 
 ```bash
 # SSH to Pi
-~/ssh-nexus
+ssh nexus
 
-# Deploy schema
-docker exec -i nexus-postgres psql -U faceless -d nexus_system < /home/didac/nexus/infra/social_schema.sql
-```
-
-#### Step 2: Add Environment Variables to Pi
-
-Create `.instagram_env` file with credentials:
-
-```bash
-# SSH to Pi
-~/ssh-nexus
-
-# The file is already created at ~/.instagram_env
-# Edit it with your valid credentials:
-nano ~/.instagram_env
-```
-
-File contents:
-```bash
-export INSTAGRAM_ACCESS_TOKEN="YOUR_VALID_TOKEN_HERE"
-export INSTAGRAM_APP_ID="your-app-id"
-export INSTAGRAM_APP_SECRET="your-app-secret"
-```
-
-**How to get a valid token:**
-1. Go to https://developers.facebook.com
-2. Select your app
-3. Go to **Tools** → **Graph API Explorer**
-4. Select your Instagram app from dropdown
-5. Click **"Generate Access Token"**
-6. Ensure permissions include: `instagram_basic`, `instagram_manage_insights`
-7. Copy the full token
-
-#### Step 3: Deploy Sync Script
-
-```bash
-# Copy to Pi
-scp scripts/pi/nexus-social-sync.sh didac@100.122.207.23:~/nexus-social-sync.sh
-
-# Make executable
-~/ssh-nexus 'chmod +x ~/nexus-social-sync.sh'
-```
-
-#### Step 3: Test Token Validity
-
-Before running the sync, verify your token works:
-
-```bash
-# SSH to Pi and test
-TOKEN="YOUR_TOKEN_HERE"
-curl -s "https://graph.instagram.com/v18.0/me?access_token=${TOKEN}&fields=id,username,followers_count"
-
-# Should return your account info, not an error
-```
-
-#### Step 4: Run Sync Script
-
-```bash
-# SSH to Pi
-~/ssh-nexus
-
-# Run manually (load env first)
+# Run sync manually
 source ~/.instagram_env && ~/nexus-social-sync.sh
 
-# Should output:
-# Starting Instagram social sync...
-# Account: [your_username] | Followers: XXXX | Posts: XXX
-# Processing XX posts...
-# Instagram sync complete!
+# Check stored data
+docker exec nexus-postgres psql -U faceless -d nexus_system \
+  -c "SELECT a.username, d.followers_count, d.snapshot_date 
+       FROM social_analytics.daily_snapshots d 
+       JOIN social_analytics.ig_accounts a ON d.account_id = a.id 
+       ORDER BY d.snapshot_date DESC LIMIT 5;"
 ```
 
-#### Step 5: Add Cron Job
+#### Cron Schedule
 
-Once working manually, schedule it:
+Currently active:
+```bash
+# 10 AM daily
+0 10 * * * source ~/.instagram_env && ~/nexus-social-sync.sh >> /var/log/nexus-social-sync.log 2>&1
+```
+
+---
+
+## Token Management
+
+### Current Token Status
+
+- **Token:** 60-day access token (valid until January 2026)
+- **App ID:** 1273183897905367 (factsmind)
+- **App Secret:** Stored securely in `~/.instagram_env`
+- **Scope:** `instagram_basic`, `instagram_manage_insights`, `pages_show_list`
+
+### Renewing the Token
+
+When the token is about to expire (check expiration in `debug_token` endpoint):
 
 ```bash
-# Add to crontab (daily at 10 AM)
-~/ssh-nexus '(crontab -l 2>/dev/null | grep -v nexus-social-sync; echo "0 10 * * * source ~/.instagram_env && ~/nexus-social-sync.sh >> /var/log/nexus-social-sync.log 2>&1") | crontab -'
+# Go to Meta Graph API Explorer
+# https://developers.facebook.com/tools/explorer/
+
+# Select your Instagram app
+# Click "Generate Access Token"
+# Copy new token
+# Update ~/.instagram_env with new token
+# Commit and deploy
 ```
+
+The script can automatically refresh tokens using APP_ID and APP_SECRET, but currently we're using the simpler approach of generating new tokens manually.
 
 ---
 
