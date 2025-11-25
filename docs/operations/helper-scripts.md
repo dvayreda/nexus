@@ -1,7 +1,7 @@
 ---
 title: Nexus Helper Scripts Consolidation
-version: 1.0
-last_updated: 2025-11-18
+version: 1.1
+last_updated: 2025-11-25
 maintainer: selto
 category: operations
 ---
@@ -10,10 +10,10 @@ category: operations
 
 ## Executive Summary
 
-This document consolidates **14 critical helper scripts** for Nexus system management, now properly version-controlled in the repository. These scripts were previously scattered across the Raspberry Pi and WSL2 environments, creating a significant operational risk. They are now centralized, documented, and ready for deployment.
+This document consolidates **15 critical helper scripts** for Nexus system management, now properly version-controlled in the repository. These scripts were previously scattered across the Raspberry Pi and WSL2 environments, creating a significant operational risk. They are now centralized, documented, and ready for deployment.
 
-**Total Lines:** ~2,100 lines of production-ready bash code
-**Scripts:** 12 Pi scripts + 2 WSL2 scripts
+**Total Lines:** ~2,400 lines of production-ready bash code
+**Scripts:** 13 Pi scripts + 2 WSL2 scripts
 **Purpose:** Health monitoring, deployment automation, backup verification, and system maintenance
 
 ---
@@ -41,11 +41,12 @@ This document consolidates **14 critical helper scripts** for Nexus system manag
 ```
 nexus/
 ├── scripts/
-│   ├── pi/              # Raspberry Pi operational scripts (12)
+│   ├── pi/              # Raspberry Pi operational scripts (13)
 │   │   ├── nexus-quick.sh              # Fast health check
 │   │   ├── nexus-health.sh             # Comprehensive diagnostics
 │   │   ├── nexus-n8n-status.sh         # n8n workflow debugging
 │   │   ├── nexus-backup-status.sh      # Backup verification
+│   │   ├── nexus-daily-report.sh       # Daily Telegram health summary
 │   │   ├── nexus-carousel-recent.sh    # Recent carousel outputs
 │   │   ├── nexus-logs.sh               # Smart log viewer
 │   │   ├── nexus-restart.sh            # Container restart automation
@@ -53,6 +54,8 @@ nexus/
 │   │   ├── nexus-compare.sh            # Before/after comparison
 │   │   ├── nexus-find.sh               # Smart file finder
 │   │   ├── nexus-backup-verify.sh      # Deep backup integrity check
+│   │   ├── nexus_vitals.sh             # System vitals collection (5min)
+│   │   ├── nexus_watchdog.sh           # Self-healing watchdog (5min)
 │   │   └── nexus-metrics.sh            # Performance metrics
 │   │
 │   └── wsl2/            # WSL2 development scripts (2)
@@ -68,12 +71,13 @@ nexus/
 
 ## Script Categories
 
-### 🔍 Monitoring & Diagnostics (5 scripts)
+### 🔍 Monitoring & Diagnostics (6 scripts)
 - **nexus-quick.sh** - 2-second health check
 - **nexus-health.sh** - Comprehensive system report
 - **nexus-n8n-status.sh** - Workflow execution analysis
 - **nexus-logs.sh** - Intelligent log viewer
 - **nexus-metrics.sh** - Performance data collection
+- **nexus-daily-report.sh** - Daily Telegram health summary (8 AM)
 
 ### 💾 Backup & Recovery (2 scripts)
 - **nexus-backup-status.sh** - Backup status verification
@@ -256,7 +260,89 @@ Failed executions: 1
 
 ---
 
-### 5. nexus-carousel-recent.sh
+### 5. nexus-daily-report.sh
+**Purpose:** Send comprehensive daily health summary via Telegram at 8:00 AM
+
+**Features:**
+- Current system vitals (CPU, memory, disk, temperature, swap)
+- 24-hour performance trends
+- Active incidents and recently resolved problems
+- Service status and restart count (24h)
+- Workflow activity summary (24h executions, success rate)
+- Backup status and disk usage
+- PostgreSQL and n8n database sizes
+- Formatted HTML message for Telegram
+
+**Usage:**
+```bash
+./nexus-daily-report.sh                    # Manual execution
+# Automated: Runs daily at 8:00 AM via cron
+```
+
+**Telegram Message Includes:**
+- 🌅 Morning header with timestamp
+- ⚠️ Problems section (if any):
+  - Active incidents with severity
+  - Service restarts in last 24h
+  - Resource warnings (high CPU, memory, disk, temperature)
+- 📊 Current status snapshot
+- 📈 Activity metrics (workflow success rate)
+- 💾 Backup health
+- 🗄️ Database sizes
+- ✅ Summary: "All systems nominal" or issues list
+
+**Requirements:**
+- Telegram credentials in `~/.bashrc`:
+  ```bash
+  export TELEGRAM_BOT_TOKEN="your-token"
+  export TELEGRAM_CHAT_ID="your-chat-id"
+  ```
+- PostgreSQL access (vitals and incidents database)
+- n8n database access (workflow stats)
+
+**Cron Setup:**
+```bash
+0 8 * * * /home/didac/nexus-daily-report.sh >> /var/log/nexus-daily-report.log 2>&1
+```
+
+**Use Cases:**
+- Daily morning health briefing
+- Trend analysis (24h averages)
+- Problem tracking and resolution
+- Automated incident detection and reporting
+- Proactive system health monitoring
+
+**Example Report:**
+```
+🌅 NEXUS Morning Report
+2025-11-25 08:00
+
+⚠️ PROBLEMS
+• Memory high: 87%
+
+📊 STATUS
+CPU: 45% (avg 24h: 42%)
+Memory: 3.5/4.0GB (87%)
+Disk: 110/256GB (43%)
+Temp: 52°C | Swap: 15%
+
+Services: 5/5 running
+
+📈 ACTIVITY (24h)
+Workflows: 24 (92% success)
+
+💾 BACKUP
+✅ 50G/500G (10%)
+Last: Nov 24 08:00
+
+🗄️ DATABASE
+nexus_system: 25 MB
+n8n: 45 MB
+```
+
+---
+
+### 6. nexus-carousel-recent.sh
 **Purpose:** Analyze recent carousel outputs
 
 **Features:**
@@ -304,7 +390,7 @@ Daily generation count:
 
 ---
 
-### 6. nexus-logs.sh
+### 7. nexus-logs.sh
 **Purpose:** Smart log viewer with filtering and analysis
 
 **Features:**
@@ -342,7 +428,7 @@ Daily generation count:
 
 ---
 
-### 7. nexus-restart.sh
+### 8. nexus-restart.sh
 **Purpose:** Safe container restart with health verification
 
 **Features:**
@@ -375,7 +461,7 @@ Daily generation count:
 
 ---
 
-### 8. nexus-cleanup.sh
+### 9. nexus-cleanup.sh
 **Purpose:** Automated disk space cleanup and maintenance
 
 **Features:**
@@ -416,7 +502,7 @@ Daily generation count:
 
 ---
 
-### 9. nexus-compare.sh
+### 10. nexus-compare.sh
 **Purpose:** Compare system state before/after changes
 
 **Features:**
@@ -461,7 +547,7 @@ Daily generation count:
 
 ---
 
-### 10. nexus-find.sh
+### 11. nexus-find.sh
 **Purpose:** Smart file search with context
 
 **Features:**
@@ -499,7 +585,7 @@ Daily generation count:
 
 ---
 
-### 11. nexus-backup-verify.sh
+### 12. nexus-backup-verify.sh
 **Purpose:** Deep backup integrity verification
 
 **Features:**
@@ -552,7 +638,7 @@ Daily generation count:
 
 ---
 
-### 12. nexus-metrics.sh
+### 13. nexus-metrics.sh
 **Purpose:** Performance metrics collection and analysis
 
 **Features:**
@@ -596,7 +682,7 @@ Daily generation count:
 
 ---
 
-### 13. nexus-git-push (WSL2)
+### 14. nexus-git-push (WSL2)
 **Purpose:** Automated git workflow for development
 
 **Features:**
@@ -637,7 +723,7 @@ Daily generation count:
 
 ---
 
-### 14. nexus-deploy (WSL2)
+### 15. nexus-deploy (WSL2)
 **Purpose:** Automated deployment from WSL2 to Raspberry Pi
 
 **Features:**

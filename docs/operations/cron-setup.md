@@ -30,12 +30,19 @@ Create a cron configuration file:
 
 ```bash
 ~/ssh-nexus 'cat > /tmp/nexus_cron << EOF
+# Telegram Alert Configuration
+TELEGRAM_BOT_TOKEN=<your-token>
+TELEGRAM_CHAT_ID=<your-chat-id>
+
 # Nexus Monitoring Cron Jobs
 # Collect vitals every 5 minutes
 */5 * * * * /home/didac/nexus_vitals.sh >> /var/log/nexus_vitals.log 2>&1
 
 # Run watchdog every 5 minutes (offset by 2 minutes from vitals)
 2-59/5 * * * * /home/didac/nexus_watchdog.sh >> /var/log/nexus_watchdog.log 2>&1
+
+# Send daily health report every morning at 8:00 AM
+0 8 * * * /home/didac/nexus-daily-report.sh >> /var/log/nexus-daily-report.log 2>&1
 EOF
 cat /tmp/nexus_cron'
 ```
@@ -53,7 +60,7 @@ cat /tmp/nexus_cron'
 ### Step 4: Create Log Files
 
 ```bash
-~/ssh-nexus 'sudo touch /var/log/nexus_vitals.log /var/log/nexus_watchdog.log'
+~/ssh-nexus 'sudo touch /var/log/nexus_vitals.log /var/log/nexus_watchdog.log /var/log/nexus-daily-report.log'
 ~/ssh-nexus 'sudo chown didac:didac /var/log/nexus_*.log'
 ```
 
