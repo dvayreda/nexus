@@ -2,7 +2,7 @@ FROM n8nio/n8n:latest
 
 USER root
 
-# Install Python3, Pillow, and sox for media processing
+# Install Python3, Pillow, and other system dependencies
 RUN apk add --no-cache \
     python3 \
     py3-pip \
@@ -11,6 +11,15 @@ RUN apk add --no-cache \
     zlib-dev \
     freetype-dev \
     sox
+
+# Install factsmind python dependencies directly
+RUN pip install --no-cache-dir \
+    google-generativeai \
+    requests \
+    PyYAML \
+    python-dotenv \
+    Pillow \
+    psycopg2-binary
 
 # Create symlinks for ffmpeg static builds (mounted from /srv/bin)
 # This allows 'ffmpeg' command to use the full-featured static build
