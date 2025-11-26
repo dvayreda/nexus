@@ -13,7 +13,8 @@ RUN apk add --no-cache \
     sox
 
 # Install factsmind python dependencies directly
-RUN pip3 install --no-cache-dir \
+# Using --break-system-packages because Alpine uses PEP 668 by default
+RUN pip3 install --no-cache-dir --break-system-packages \
     google-generativeai \
     requests \
     PyYAML \
