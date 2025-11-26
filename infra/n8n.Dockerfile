@@ -13,7 +13,7 @@ RUN apk add --no-cache \
     sox
 
 # Install factsmind python dependencies directly
-RUN pip install --no-cache-dir \
+RUN pip3 install --no-cache-dir \
     google-generativeai \
     requests \
     PyYAML \
