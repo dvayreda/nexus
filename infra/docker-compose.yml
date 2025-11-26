@@ -80,6 +80,7 @@ services:
       - n8n_data:/home/node/.n8n
       - /srv/outputs:/data/outputs
       - /srv/projects/nexus:/data/workflows
+      - /srv/projects/factsmind:/data/factsmind
       - /srv/projects/factsmind/scripts:/data/scripts
       - /srv/projects/factsmind/assets:/data/assets
       - /srv/bin:/data/bin
