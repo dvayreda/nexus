@@ -3,11 +3,11 @@
 # Make sure to chmod 600 this file for security
 
 # 60-day access token (from Meta Graph API)
-export INSTAGRAM_ACCESS_TOKEN="EAASF9Dn36NcBQMHfx2ssTLAVD0mULxjSBmzQsJZA3VhBt0oCZBC9IVMnVqtRfPnjkyf5q20jPjleAXdQ5nFujS7ZAC4WMgO5pxrGFeRkdzjoh9mvhN0svWdpWLLgjOS2kuvDgelSBDHZBaZCKqwzLeDpUqohy1vsoZAoIZAZArefMg90KuT9L2embIFdOZA3maAZDZD"
+export INSTAGRAM_ACCESS_TOKEN="<YOUR_60_DAY_ACCESS_TOKEN>"
 
 # Meta App Credentials (for token refresh if needed)
-export INSTAGRAM_APP_ID="1273183897905367"
-export INSTAGRAM_APP_SECRET="d8bfe9a55ca2de69dee92a64e23b70b0"
+export INSTAGRAM_APP_ID="<YOUR_META_APP_ID>"
+export INSTAGRAM_APP_SECRET="<YOUR_META_APP_SECRET>"
 
 # Database configuration (already set in main profile, but can override)
 # export POSTGRES_HOST="localhost"
